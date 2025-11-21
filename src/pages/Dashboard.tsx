@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchPageStats, fetchPages, fetchRewriteStats, fetchIndexabilityStats } from "@/services/geoService";
+import { fetchPageStats, fetchPages, fetchRewriteStats, fetchIndexabilityStats, fetchGeneratedPages } from "@/services/geoService";
 import { ScoreCard } from "@/components/ScoreCard";
 import { Loader } from "@/components/Loader";
-import { Activity, TrendingUp, Eye, ThumbsUp, Award, Globe, Wand2, FileSearch } from "lucide-react";
+import { Activity, TrendingUp, Eye, ThumbsUp, Award, Globe, Wand2, FileSearch, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,20 +16,23 @@ export default function Dashboard() {
   const [pages, setPages] = useState<any[]>([]);
   const [rewriteStats, setRewriteStats] = useState<any>(null);
   const [indexabilityStats, setIndexabilityStats] = useState<any>(null);
+  const [generatedPages, setGeneratedPages] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [statsData, pagesData, rewriteData, indexabilityData] = await Promise.all([
+      const [statsData, pagesData, rewriteData, indexabilityData, generatedPagesData] = await Promise.all([
         fetchPageStats(),
         fetchPages(),
         fetchRewriteStats(),
-        fetchIndexabilityStats()
+        fetchIndexabilityStats(),
+        fetchGeneratedPages()
       ]);
       setStats(statsData);
       setPages(pagesData);
       setRewriteStats(rewriteData);
       setIndexabilityStats(indexabilityData);
+      setGeneratedPages(generatedPagesData);
       setLoading(false);
     }
     loadData();
@@ -137,6 +140,83 @@ export default function Dashboard() {
               Open Rewriter
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-foreground flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Generated GEO Pages
+            </CardTitle>
+            <Button onClick={() => navigate("/create-page")} variant="outline" size="sm">
+              Create New
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {generatedPages.length > 0 ? (
+            <div className="space-y-3">
+              {generatedPages.map((page) => {
+                const metadata = page.metadata || {};
+                const personaName = page.persona_id ? 'Persona-Optimized' : 'General';
+                
+                return (
+                  <div
+                    key={page.id}
+                    className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="text-sm font-medium text-foreground">
+                            {metadata.pageTitle || 'Untitled Page'}
+                          </p>
+                          <Badge variant={page.persona_id ? "default" : "secondary"} className="text-xs">
+                            {personaName}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {metadata.pageGoal || 'No description'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Created: {new Date(page.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const newWindow = window.open('', '_blank');
+                            if (newWindow) {
+                              newWindow.document.write(page.html_content);
+                              newWindow.document.close();
+                            }
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-muted-foreground mb-4">
+                No generated pages yet. Create your first GEO-optimized page.
+              </p>
+              <Button onClick={() => navigate("/create-page")} variant="outline">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Create GEO Page
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

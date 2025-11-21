@@ -89,6 +89,15 @@ export default function CreateGeoPage() {
     toast.success('HTML copied to clipboard');
   };
 
+  const handleViewLiveSite = () => {
+    if (!generatedPage) return;
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      newWindow.document.write(generatedPage.html_content);
+      newWindow.document.close();
+    }
+  };
+
   if (generatedPage) {
     return (
       <div className="flex-1 space-y-6 p-6 w-full overflow-hidden">
@@ -117,8 +126,12 @@ export default function CreateGeoPage() {
                 className="border border-border rounded-lg p-4 max-h-[500px] overflow-y-auto bg-background"
                 dangerouslySetInnerHTML={{ __html: generatedPage.html_content }}
               />
-              <div className="flex gap-2 mt-4">
-                <Button size="sm" onClick={handleExportHTML}>
+              <div className="flex flex-wrap gap-2 mt-4">
+                <Button size="sm" onClick={handleViewLiveSite}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Live Site
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleExportHTML}>
                   <Download className="h-4 w-4 mr-2" />
                   Export HTML
                 </Button>
