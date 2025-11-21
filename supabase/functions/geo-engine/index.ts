@@ -116,6 +116,32 @@ Return ONLY this JSON:
 }`;
         break;
 
+      case 'persona-score':
+        userPrompt = `PAGE CONTENT:
+${pageHtml}
+
+PERSONA CONTEXT:
+${extraContext || ''}
+
+QUESTION:
+${promptText}
+
+TASK:
+1) Answer the question as clearly and helpfully as possible for this persona, using the page content when relevant.
+2) Then evaluate how well this answer uses the page according to the GEO framework.
+
+Return ONLY this JSON:
+{
+  "llm_response": string,
+  "relevance_score": float (0-1),
+  "comprehension_score": float (0-1),
+  "visibility_score": float (0-1),
+  "recommendation_score": float (0-1),
+  "global_geo_score": float (0-1),
+  "recommendations": [string]
+}`;
+        break;
+
       case 'rewrite':
         userPrompt = `PAGE CONTENT:
 ${pageHtml}

@@ -125,15 +125,15 @@ Needs: ${persona.needs}
     for (const question of questions) {
       console.log('[persona-geo-test] Testing question:', question);
       
-      // Step 4a: Get LLM answer for this persona question
-      const answerResponse = await fetch(`${supabaseUrl}/functions/v1/geo-engine`, {
+      // Use unified persona-score task to both answer and score in a single AI call
+      const personaScoreResponse = await fetch(`${supabaseUrl}/functions/v1/geo-engine`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseServiceKey}`,
         },
         body: JSON.stringify({
-          task: 'answer',
+          task: 'persona-score',
           pageHtml: page.html_content,
           pageUrl: page.url,
           promptText: question,
@@ -141,39 +141,13 @@ Needs: ${persona.needs}
         }),
       });
 
-      if (!answerResponse.ok) {
-        console.error('[persona-geo-test] Answer error for question:', question, await answerResponse.text());
+      if (!personaScoreResponse.ok) {
+        console.error('[persona-geo-test] Persona score error for question:', question, await personaScoreResponse.text());
         continue;
       }
 
-      const answerData = await answerResponse.json();
-      console.log('[persona-geo-test] Answer response:', JSON.stringify(answerData));
-      const llmAnswer = (answerData && (answerData.answer || answerData.result)) || '';
-      
-      // Step 4b: Score the LLM answer using GEO engine
-      const scoreResponse = await fetch(`${supabaseUrl}/functions/v1/geo-engine`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseServiceKey}`,
-        },
-        body: JSON.stringify({
-          task: 'score',
-          pageHtml: page.html_content,
-          pageUrl: page.url,
-          promptText: question,
-          llmAnswer: llmAnswer,
-          extraContext: personaContext,
-        }),
-      });
-
-      if (!scoreResponse.ok) {
-        console.error('[persona-geo-test] Score error for question:', question, await scoreResponse.text());
-        continue;
-      }
-
-      const scoreData = await scoreResponse.json();
-      console.log('[persona-geo-test] Score response:', JSON.stringify(scoreData));
+      const scoreData = await personaScoreResponse.json();
+      console.log('[persona-geo-test] Persona score response:', JSON.stringify(scoreData));
       
       const result = scoreData.result || scoreData;
 
@@ -181,6 +155,8 @@ Needs: ${persona.needs}
         console.error('[persona-geo-test] No result data for question:', question);
         continue;
       }
+
+      const llmAnswer = result.llm_response || result.llm_answer || '';
 
       const { error: insertError } = await supabase
         .from('persona_results')
