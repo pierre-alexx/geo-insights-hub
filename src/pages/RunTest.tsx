@@ -195,25 +195,7 @@ export default function RunTest() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-foreground">1. Select Test Type</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RadioGroup value={testMode} onValueChange={(value: any) => setTestMode(value)}>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="general" id="general" />
-              <Label htmlFor="general">General Test</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="persona" id="persona" />
-              <Label htmlFor="persona">Persona Test</Label>
-            </div>
-          </RadioGroup>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-foreground">2. Load Page</CardTitle>
+          <CardTitle className="text-foreground">1. Load Page</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="fetch">
@@ -306,12 +288,31 @@ export default function RunTest() {
       </Card>
 
       {page && !result && !personaResults && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-foreground">3. Configure Test</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {testMode === "general" ? (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-foreground">2. Select Test Type</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RadioGroup value={testMode} onValueChange={(value: any) => setTestMode(value)}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="general" id="general" />
+                  <Label htmlFor="general">General Test</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="persona" id="persona" />
+                  <Label htmlFor="persona">Persona Test</Label>
+                </div>
+              </RadioGroup>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-foreground">3. Configure Test</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {testMode === "general" ? (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="prompt-type">Prompt Type</Label>
@@ -399,9 +400,10 @@ export default function RunTest() {
                   Run Persona GEO Test
                 </Button>
               </>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {loading && (
