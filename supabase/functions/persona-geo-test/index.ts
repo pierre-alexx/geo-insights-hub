@@ -97,8 +97,15 @@ Needs: ${persona.needs}
       const rawResult = questionsData.answer || questionsData.result || questionsData;
 
       if (typeof rawResult === 'string') {
-        // Expecting a JSON array string like ["Question 1?", "Question 2?"]
-        questions = JSON.parse(rawResult);
+        // Strip markdown code blocks if present (e.g., ```json ... ```)
+        let cleanedString = rawResult.trim();
+        if (cleanedString.startsWith('```')) {
+          // Remove opening ``` or ```json
+          cleanedString = cleanedString.replace(/^```(?:json)?\s*\n?/, '');
+          // Remove closing ```
+          cleanedString = cleanedString.replace(/\n?```\s*$/, '');
+        }
+        questions = JSON.parse(cleanedString.trim());
       } else if (Array.isArray(rawResult)) {
         questions = rawResult;
       } else if (rawResult && Array.isArray(rawResult.questions)) {
