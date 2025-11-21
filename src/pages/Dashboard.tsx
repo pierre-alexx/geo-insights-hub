@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { decodeHTMLEntities } from "@/lib/htmlUtils";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -273,7 +274,7 @@ export default function Dashboard() {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">
-                        {page.title}
+                        {decodeHTMLEntities(page.title)}
                       </p>
                       <p className="text-xs text-muted-foreground truncate mt-1">
                         {page.url}
