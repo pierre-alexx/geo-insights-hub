@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      geo_playbook: {
+        Row: {
+          chunk: string
+          embedding: string | null
+          id: string
+          section: string
+        }
+        Insert: {
+          chunk: string
+          embedding?: string | null
+          id?: string
+          section: string
+        }
+        Update: {
+          chunk?: string
+          embedding?: string | null
+          id?: string
+          section?: string
+        }
+        Relationships: []
+      }
       pages: {
         Row: {
           crawl_status: string | null

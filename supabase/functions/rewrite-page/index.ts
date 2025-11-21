@@ -22,7 +22,6 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
@@ -32,7 +31,6 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch page
     const { data: page, error: pageError } = await supabase
       .from('pages')
       .select('*')
@@ -48,70 +46,27 @@ serve(async (req) => {
 
     console.log('Rewriting page:', page.url);
 
-    // OpenAI API call
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    const systemPrompt = `You are a GEO optimization AI. 
-Your goal is to rewrite a webpage so that LLMs can:
-- understand it clearly
-- reuse its content accurately
-- index and recall it
-- recommend it when relevant
-- avoid hallucinations
-
-Rewrite the page in a structured, clean, explicit, LLM-friendly way.
-
-Constraints:
-- Keep all factual content true.
-- Do NOT invent non-public or restricted content.
-- Improve clarity, structure, headings, definitions, entities, numbers, roles, benefits.
-- Make relationships explicit.
-- Use short sentences.
-- Add an "Entity Definitions" section if needed.
-- Add a "Why This Page Matters" section summarizing the purpose.
-- Add semantic markers and structured sections that help LLMs.`;
-
-    const userPrompt = `ORIGINAL PAGE HTML:
-${page.html_content}
-
-TASK:
-Rewrite this page for LLM optimization. 
-Return JSON:
-{
-  "rewritten_html": "...",
-  "summary": "...",
-  "geo_rationale": "..."
-}`;
-
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Call geo-engine for rewrite
+    const geoEngineResponse = await fetch(`${supabaseUrl}/functions/v1/geo-engine`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${supabaseKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-mini-2025-04-14',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_completion_tokens: 16000,
-        response_format: { type: "json_object" }
-      }),
+        task: 'rewrite',
+        pageHtml: page.html_content,
+        pageUrl: page.url
+      })
     });
 
-    if (!openaiResponse.ok) {
-      const errorData = await openaiResponse.json();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
+    if (!geoEngineResponse.ok) {
+      const errorData = await geoEngineResponse.json();
+      console.error('Geo-engine error:', errorData);
+      throw new Error(`Geo-engine error: ${errorData.error || 'Unknown error'}`);
     }
 
-    const openaiData = await openaiResponse.json();
-    const aiResponse = JSON.parse(openaiData.choices[0].message.content);
-
+    const aiResponse = await geoEngineResponse.json();
     console.log('AI rewrite complete');
 
     // Insert rewrite into database
