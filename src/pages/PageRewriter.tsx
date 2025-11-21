@@ -53,13 +53,24 @@ export default function PageRewriter() {
     }
   };
 
-  const handleFetchPage = () => {
-    const page = pages.find(p => p.id === selectedPageId);
-    if (page) {
-      setSelectedPage(page);
-      setShowOriginalHtml(false);
-    } else {
+  const handleFetchPage = async () => {
+    if (!selectedPageId) {
       toast.error("Please select a page");
+      return;
+    }
+
+    try {
+      const { fetchPageById } = await import("@/services/geoService");
+      const page = await fetchPageById(selectedPageId);
+      if (page) {
+        setSelectedPage(page);
+        setShowOriginalHtml(false);
+      } else {
+        toast.error("Page not found");
+      }
+    } catch (error) {
+      console.error("Failed to fetch page:", error);
+      toast.error("Failed to load page content");
     }
   };
 
