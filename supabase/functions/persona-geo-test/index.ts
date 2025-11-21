@@ -90,15 +90,27 @@ Needs: ${persona.needs}
     }
 
     const questionsData = await generateQuestionsResponse.json();
+    console.log('[persona-geo-test] Questions response:', JSON.stringify(questionsData));
     let questions: string[] = [];
     
     try {
-      if (typeof questionsData.result === 'string') {
-        questions = JSON.parse(questionsData.result);
-      } else if (Array.isArray(questionsData.result)) {
-        questions = questionsData.result;
+      const rawResult = questionsData.result || questionsData;
+      if (typeof rawResult === 'string') {
+        questions = JSON.parse(rawResult);
+      } else if (Array.isArray(rawResult)) {
+        questions = rawResult;
+      } else if (rawResult && Array.isArray(rawResult.questions)) {
+        questions = rawResult.questions;
       } else {
         questions = [questionsData.result];
+      }
+      
+      // Filter out any undefined/null questions
+      questions = questions.filter(q => q && typeof q === 'string');
+      
+      // If no valid questions, use fallback
+      if (questions.length === 0) {
+        questions = [`What does this page offer for someone like ${persona.name}?`];
       }
     } catch (e) {
       console.error('[persona-geo-test] Failed to parse questions:', e);
@@ -135,7 +147,14 @@ Needs: ${persona.needs}
       }
 
       const scoreData = await scoreResponse.json();
-      const result = scoreData.result;
+      console.log('[persona-geo-test] Score response:', JSON.stringify(scoreData));
+      
+      const result = scoreData.result || scoreData;
+
+      if (!result) {
+        console.error('[persona-geo-test] No result data for question:', question);
+        continue;
+      }
 
       const { error: insertError } = await supabase
         .from('persona_results')
@@ -143,7 +162,7 @@ Needs: ${persona.needs}
           persona_id: personaId,
           page_id: pageId,
           prompt: question,
-          llm_response: result.llm_response || '',
+          llm_response: result.llm_response || result.llm_answer || '',
           relevance_score: result.relevance_score || 0,
           comprehension_score: result.comprehension_score || 0,
           visibility_score: result.visibility_score || 0,
@@ -158,7 +177,7 @@ Needs: ${persona.needs}
 
       individualResults.push({
         question,
-        llm_response: result.llm_response || '',
+        llm_response: result.llm_response || result.llm_answer || '',
         relevance_score: result.relevance_score || 0,
         comprehension_score: result.comprehension_score || 0,
         visibility_score: result.visibility_score || 0,
