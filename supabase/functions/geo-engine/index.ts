@@ -198,6 +198,32 @@ Return the best possible answer, structured according to the playbook.`;
         responseFormat = undefined;
         break;
 
+      case 'indexability':
+        userPrompt = `PAGE HTML:
+${pageHtml}
+
+TASK:
+Evaluate how indexable and LLM-friendly this HTML structure is.
+Focus on:
+- heading hierarchy (H1/H2/H3),
+- clarity of sections,
+- presence of definitions,
+- explicit entities (products, services, client types),
+- use of bullets/lists,
+- presence of summary/recap blocks,
+- length of paragraphs.
+
+Return ONLY valid JSON:
+{
+  "html_indexability_score": float (0-1),
+  "structure_clarity_score": float (0-1),
+  "entity_clarity_score": float (0-1),
+  "content_scannability_score": float (0-1),
+  "issues": [string],
+  "suggestions": [string]
+}`;
+        break;
+
       default:
         throw new Error('Invalid task type');
     }

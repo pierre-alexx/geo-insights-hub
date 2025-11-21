@@ -35,6 +35,60 @@ export type Database = {
         }
         Relationships: []
       }
+      indexability_results: {
+        Row: {
+          content_scannability_score: number
+          created_at: string | null
+          entity_clarity_score: number
+          html_indexability_score: number
+          id: string
+          issues: Json | null
+          page_id: string
+          result_id: string | null
+          structure_clarity_score: number
+          suggestions: Json | null
+        }
+        Insert: {
+          content_scannability_score: number
+          created_at?: string | null
+          entity_clarity_score: number
+          html_indexability_score: number
+          id?: string
+          issues?: Json | null
+          page_id: string
+          result_id?: string | null
+          structure_clarity_score: number
+          suggestions?: Json | null
+        }
+        Update: {
+          content_scannability_score?: number
+          created_at?: string | null
+          entity_clarity_score?: number
+          html_indexability_score?: number
+          id?: string
+          issues?: Json | null
+          page_id?: string
+          result_id?: string | null
+          structure_clarity_score?: number
+          suggestions?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indexability_results_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "indexability_results_result_id_fkey"
+            columns: ["result_id"]
+            isOneToOne: false
+            referencedRelation: "results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pages: {
         Row: {
           crawl_status: string | null

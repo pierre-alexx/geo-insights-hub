@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.persona-geo-test]
 verify_jwt = false
+
+[functions.indexability-score]
+verify_jwt = false
