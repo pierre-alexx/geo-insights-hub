@@ -149,13 +149,19 @@ ${pageHtml}
 
 ${rewriteContext ? `CONTEXT:\n${rewriteContext}\n\n` : ''}TASK:
 Rewrite this page to be optimized for LLMs according to the GEO framework and playbook.
-${extraContext?.recommendations?.length ? `Address these specific recommendations:\n${extraContext.recommendations.join('\n')}\n\n` : ''}${extraContext?.persona ? `Tailor the content for this persona:\nName: ${extraContext.persona.name}\nDescription: ${extraContext.persona.description}\nGoal: ${extraContext.persona.goal}\nNeeds: ${extraContext.persona.needs}\nRisk Profile: ${extraContext.persona.risk_profile}\n\n` : ''}Return ONLY this JSON:
+${extraContext?.recommendations?.length ? `Address these specific recommendations:\n${extraContext.recommendations.join('\n')}\n\n` : ''}${extraContext?.persona ? `Tailor the content for this persona:\nName: ${extraContext.persona.name}\nDescription: ${extraContext.persona.description}\nGoal: ${extraContext.persona.goal}\nNeeds: ${extraContext.persona.needs}\nRisk Profile: ${extraContext.persona.risk_profile}\n\n` : ''}Return your response in this EXACT format (use triple backticks for the HTML):
+
+\`\`\`json
 {
-  "new_page_html": "complete rewritten HTML",
-  "new_page_outline": "hierarchical outline of the new page structure",
-  "geo_rationale": "explanation of GEO improvements made",
-  ${extraContext?.persona ? '"persona_rationale": "explanation of persona-specific tailoring"' : '"persona_rationale": null'}
-}`;
+  "new_page_html": "your rewritten HTML here - escape all quotes and newlines properly",
+  "new_page_outline": "hierarchical outline",
+  "geo_rationale": "explanation of improvements",
+  ${extraContext?.persona ? '"persona_rationale": "persona-specific explanation"' : '"persona_rationale": null'}
+}
+\`\`\`
+
+CRITICAL: Ensure all HTML is properly escaped for JSON. Replace all " with \\" and all newlines with \\n.`;
+        responseFormat = undefined; // Don't force JSON mode for rewrite to avoid parsing issues
         break;
 
       case 'gap-analysis':
@@ -233,7 +239,23 @@ Return the best possible answer, structured according to the playbook.`;
     if (task === 'answer') {
       result = { answer: content };
     } else {
-      result = JSON.parse(content);
+      try {
+        // For rewrite task, extract JSON from markdown code block if present
+        if (task === 'rewrite' && content.includes('```json')) {
+          const jsonMatch = content.match(/```json\s*\n([\s\S]*?)\n```/);
+          if (jsonMatch) {
+            result = JSON.parse(jsonMatch[1]);
+          } else {
+            result = JSON.parse(content);
+          }
+        } else {
+          result = JSON.parse(content);
+        }
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        console.error('Content that failed to parse:', content.substring(0, 500));
+        throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+      }
     }
 
     return new Response(
