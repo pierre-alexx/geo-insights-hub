@@ -233,10 +233,10 @@ export default function PageRewriter() {
                     </h4>
                     <div className="border rounded-lg overflow-hidden bg-white">
                       <iframe
-                        srcDoc={selectedPage.html_content || ''}
+                        srcDoc={`<base href="${new URL(selectedPage.url).origin}/">${selectedPage.html_content || ''}`}
                         className="w-full h-[600px] border-0"
                         title="Original HTML"
-                        sandbox="allow-same-origin"
+                        sandbox="allow-same-origin allow-scripts"
                       />
                     </div>
                   </div>
@@ -246,10 +246,10 @@ export default function PageRewriter() {
                     </h4>
                     <div className="border rounded-lg overflow-hidden bg-white">
                       <iframe
-                        srcDoc={latestRewrite.rewrittenHtml}
+                        srcDoc={`<base href="${new URL(selectedPage.url).origin}/">${latestRewrite.rewrittenHtml}`}
                         className="w-full h-[600px] border-0"
                         title="Rewritten HTML"
-                        sandbox="allow-same-origin"
+                        sandbox="allow-same-origin allow-scripts"
                       />
                     </div>
                   </div>
@@ -259,10 +259,10 @@ export default function PageRewriter() {
               <TabsContent value="original">
                 <div className="border rounded-lg overflow-hidden bg-white">
                   <iframe
-                    srcDoc={selectedPage.html_content || ''}
+                    srcDoc={`<base href="${new URL(selectedPage.url).origin}/">${selectedPage.html_content || ''}`}
                     className="w-full h-[600px] border-0"
                     title="Original HTML Full"
-                    sandbox="allow-same-origin"
+                    sandbox="allow-same-origin allow-scripts"
                   />
                 </div>
               </TabsContent>
@@ -270,10 +270,10 @@ export default function PageRewriter() {
               <TabsContent value="rewritten">
                 <div className="border rounded-lg overflow-hidden bg-white">
                   <iframe
-                    srcDoc={latestRewrite.rewrittenHtml}
+                    srcDoc={`<base href="${new URL(selectedPage.url).origin}/">${latestRewrite.rewrittenHtml}`}
                     className="w-full h-[600px] border-0"
                     title="Rewritten HTML Full"
-                    sandbox="allow-same-origin"
+                    sandbox="allow-same-origin allow-scripts"
                   />
                 </div>
               </TabsContent>
