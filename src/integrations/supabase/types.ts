@@ -14,7 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      prompts: {
+        Row: {
+          created_at: string
+          id: string
+          text: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          text: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          text?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      results: {
+        Row: {
+          id: string
+          llm_response: string
+          presence_score: number
+          prompt_id: string
+          recommendations: Json
+          recommended: boolean
+          sentiment_score: number
+          timestamp: string
+        }
+        Insert: {
+          id?: string
+          llm_response: string
+          presence_score: number
+          prompt_id: string
+          recommendations?: Json
+          recommended?: boolean
+          sentiment_score: number
+          timestamp?: string
+        }
+        Update: {
+          id?: string
+          llm_response?: string
+          presence_score?: number
+          prompt_id?: string
+          recommendations?: Json
+          recommended?: boolean
+          sentiment_score?: number
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "results_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

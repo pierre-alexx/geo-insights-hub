@@ -78,7 +78,20 @@ export default function Dashboard() {
       </div>
 
       {/* Chart */}
-      <ChartPresenceByType data={stats.presenceByType} />
+      {Object.keys(stats.presenceByType).length > 0 ? (
+        <ChartPresenceByType data={stats.presenceByType} />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-foreground">Presence by Query Type</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-muted-foreground py-8">
+              No data available yet. Run some GEO tests to see results here.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Results */}
       <Card>
@@ -86,41 +99,47 @@ export default function Dashboard() {
           <CardTitle className="text-foreground">Recent Test Results</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {recentResults.map((result) => (
-              <div
-                key={result.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline" className="shrink-0">
-                      {result.promptType}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(result.timestamp).toLocaleString()}
-                    </span>
+          {recentResults.length > 0 ? (
+            <div className="space-y-3">
+              {recentResults.map((result) => (
+                <div
+                  key={result.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="outline" className="shrink-0">
+                        {result.promptType}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(result.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-foreground truncate">
+                      {result.promptText}
+                    </p>
                   </div>
-                  <p className="text-sm text-foreground truncate">
-                    {result.promptText}
-                  </p>
+                  <div className="ml-4 shrink-0">
+                    <Badge 
+                      variant={
+                        result.presenceScore === 2 
+                          ? "default" 
+                          : result.presenceScore === 1 
+                          ? "secondary" 
+                          : "destructive"
+                      }
+                    >
+                      Score: {result.presenceScore}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="ml-4 shrink-0">
-                  <Badge 
-                    variant={
-                      result.presenceScore === 2 
-                        ? "default" 
-                        : result.presenceScore === 1 
-                        ? "secondary" 
-                        : "destructive"
-                    }
-                  >
-                    Score: {result.presenceScore}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">
+              No results yet. Run your first GEO test to get started.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

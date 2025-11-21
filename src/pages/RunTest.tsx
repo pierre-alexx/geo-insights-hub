@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { runGeoTest, saveGeoResult, GeoResult } from "@/services/geoService";
+import { useNavigate } from "react-router-dom";
+import { runGeoTest, GeoResult } from "@/services/geoService";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader } from "@/components/Loader";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { PlayCircle, Save } from "lucide-react";
+import { PlayCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 const promptTypes = [
@@ -26,6 +27,7 @@ const promptTypes = [
 ];
 
 export default function RunTest() {
+  const navigate = useNavigate();
   const [promptType, setPromptType] = useState("");
   const [promptText, setPromptText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,10 +40,11 @@ export default function RunTest() {
     }
 
     setLoading(true);
+    setResult(null);
     try {
       const testResult = await runGeoTest(promptType, promptText);
       setResult(testResult);
-      toast.success("GEO test completed successfully");
+      toast.success("GEO test completed and saved successfully");
     } catch (error) {
       toast.error("Failed to run GEO test");
       console.error(error);
@@ -50,20 +53,10 @@ export default function RunTest() {
     }
   };
 
-  const handleSaveResult = async () => {
-    if (!result) return;
-
-    try {
-      await saveGeoResult(result);
-      toast.success("Result saved successfully");
-      // Reset form
-      setPromptType("");
-      setPromptText("");
-      setResult(null);
-    } catch (error) {
-      toast.error("Failed to save result");
-      console.error(error);
-    }
+  const handleNewTest = () => {
+    setPromptType("");
+    setPromptText("");
+    setResult(null);
   };
 
   const getPresenceLabel = (score: number) => {
@@ -95,7 +88,7 @@ export default function RunTest() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="prompt-type">Prompt Type</Label>
-            <Select value={promptType} onValueChange={setPromptType}>
+            <Select value={promptType} onValueChange={setPromptType} disabled={loading || result !== null}>
               <SelectTrigger id="prompt-type">
                 <SelectValue placeholder="Select prompt type" />
               </SelectTrigger>
@@ -118,18 +111,21 @@ export default function RunTest() {
               onChange={(e) => setPromptText(e.target.value)}
               rows={4}
               className="resize-none"
+              disabled={loading || result !== null}
             />
           </div>
 
-          <Button 
-            onClick={handleRunTest} 
-            disabled={loading || !promptType || !promptText.trim()}
-            className="w-full"
-            size="lg"
-          >
-            <PlayCircle className="mr-2 h-5 w-5" />
-            Run GEO Test
-          </Button>
+          {!result && (
+            <Button 
+              onClick={handleRunTest} 
+              disabled={loading || !promptType || !promptText.trim()}
+              className="w-full"
+              size="lg"
+            >
+              <PlayCircle className="mr-2 h-5 w-5" />
+              Run GEO Test
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -146,12 +142,17 @@ export default function RunTest() {
       {result && !loading && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-foreground flex items-center justify-between">
+            <CardTitle className="text-foreground flex items-center justify-between flex-wrap gap-2">
               <span>Test Result</span>
-              <Button onClick={handleSaveResult} variant="outline">
-                <Save className="mr-2 h-4 w-4" />
-                Save Result
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => navigate("/results")} variant="outline">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  View in Results
+                </Button>
+                <Button onClick={handleNewTest}>
+                  New Test
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
