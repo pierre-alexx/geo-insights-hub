@@ -164,7 +164,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_playbook_chunks: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          chunk: string
+          id: string
+          section: string
+          similarity: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
