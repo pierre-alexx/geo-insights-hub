@@ -150,7 +150,8 @@ serve(async (req) => {
 
     if (geoEngineError) {
       console.error('GEO Engine invocation error:', geoEngineError);
-      throw new Error(`GEO Engine error: ${geoEngineError.message}`);
+      console.error('GEO Engine payload was:', JSON.stringify(geoEnginePayload, null, 2).substring(0, 1000));
+      throw new Error(`GEO Engine error: ${geoEngineError.message || JSON.stringify(geoEngineError)}`);
     }
 
     if (!geoEngineData) {
@@ -158,6 +159,7 @@ serve(async (req) => {
     }
 
     console.log('GEO Engine response received successfully');
+    console.log('Response keys:', Object.keys(geoEngineData));
 
     // 6. Return response
     return new Response(JSON.stringify({

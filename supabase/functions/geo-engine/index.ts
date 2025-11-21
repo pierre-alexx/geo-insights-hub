@@ -149,19 +149,17 @@ ${pageHtml}
 
 ${rewriteContext ? `CONTEXT:\n${rewriteContext}\n\n` : ''}TASK:
 Rewrite this page to be optimized for LLMs according to the GEO framework and playbook.
-${extraContext?.recommendations?.length ? `Address these specific recommendations:\n${extraContext.recommendations.join('\n')}\n\n` : ''}${extraContext?.persona ? `Tailor the content for this persona:\nName: ${extraContext.persona.name}\nDescription: ${extraContext.persona.description}\nGoal: ${extraContext.persona.goal}\nNeeds: ${extraContext.persona.needs}\nRisk Profile: ${extraContext.persona.risk_profile}\n\n` : ''}Return your response in this EXACT format (use triple backticks for the HTML):
+${extraContext?.recommendations?.length ? `Address these specific recommendations:\n${extraContext.recommendations.join('\n')}\n\n` : ''}${extraContext?.persona ? `Tailor the content for this persona:\nName: ${extraContext.persona.name}\nDescription: ${extraContext.persona.description}\nGoal: ${extraContext.persona.goal}\nNeeds: ${extraContext.persona.needs}\nRisk Profile: ${extraContext.persona.risk_profile}\n\n` : ''}IMPORTANT: Return ONLY valid JSON in this EXACT format. For the HTML field, encode the HTML as base64 to avoid escaping issues.
 
-\`\`\`json
 {
-  "new_page_html": "your rewritten HTML here - escape all quotes and newlines properly",
-  "new_page_outline": "hierarchical outline",
-  "geo_rationale": "explanation of improvements",
-  ${extraContext?.persona ? '"persona_rationale": "persona-specific explanation"' : '"persona_rationale": null'}
+  "new_page_html_base64": "<base64 encoded HTML here>",
+  "new_page_outline": "hierarchical outline as plain text",
+  "geo_rationale": "explanation of improvements as plain text",
+  ${extraContext?.persona ? '"persona_rationale": "persona-specific explanation as plain text"' : '"persona_rationale": null'}
 }
-\`\`\`
 
-CRITICAL: Ensure all HTML is properly escaped for JSON. Replace all " with \\" and all newlines with \\n.`;
-        responseFormat = undefined; // Don't force JSON mode for rewrite to avoid parsing issues
+Use standard base64 encoding for new_page_html_base64. All other fields should be plain text with proper JSON escaping.`;
+        responseFormat = { type: "json_object" };
         break;
 
       case 'gap-analysis':
@@ -241,7 +239,7 @@ Return the best possible answer, structured according to the playbook.`;
     } else {
       try {
         // For rewrite task, extract JSON from markdown code block if present
-        if (task === 'rewrite' && content.includes('```json')) {
+        if (content.includes('```json')) {
           const jsonMatch = content.match(/```json\s*\n([\s\S]*?)\n```/);
           if (jsonMatch) {
             result = JSON.parse(jsonMatch[1]);
@@ -251,9 +249,24 @@ Return the best possible answer, structured according to the playbook.`;
         } else {
           result = JSON.parse(content);
         }
+
+        // Decode base64 HTML if present (for rewrite task)
+        if (task === 'rewrite' && result.new_page_html_base64) {
+          try {
+            const decoder = new TextDecoder();
+            const base64Data = result.new_page_html_base64;
+            const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+            result.new_page_html = decoder.decode(binaryData);
+            delete result.new_page_html_base64;
+          } catch (decodeError) {
+            console.error('Base64 decode error:', decodeError);
+            // If decode fails, try to use the content as-is
+            result.new_page_html = result.new_page_html_base64 || "";
+          }
+        }
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
-        console.error('Content that failed to parse:', content.substring(0, 500));
+        console.error('Content that failed to parse (first 500 chars):', content.substring(0, 500));
         throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
       }
     }
