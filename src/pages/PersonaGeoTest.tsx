@@ -16,7 +16,7 @@ export default function PersonaGeoTest() {
   const [pages, setPages] = useState<Page[]>([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
   const [selectedPage, setSelectedPage] = useState<Page | null>(null);
-  const [numQuestions, setNumQuestions] = useState<number>(5);
+  const [numQuestions, setNumQuestions] = useState<number>(6);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [selectedResult, setSelectedResult] = useState<any>(null);
