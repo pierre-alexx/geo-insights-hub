@@ -68,16 +68,18 @@ serve(async (req) => {
 
     const aiResponse = await geoEngineResponse.json();
     console.log('AI rewrite complete');
+    console.log('AI response keys:', Object.keys(aiResponse));
 
     // Insert rewrite into database
+    // geo-engine returns: new_page_html, new_page_outline, geo_rationale, persona_rationale
     const { data: rewrite, error: rewriteError } = await supabase
       .from('rewrites')
       .insert({
         page_id: pageId,
         original_html: page.html_content,
-        rewritten_html: aiResponse.rewritten_html,
-        summary: aiResponse.summary,
-        geo_rationale: aiResponse.geo_rationale
+        rewritten_html: aiResponse.new_page_html || aiResponse.rewritten_html || '',
+        summary: aiResponse.new_page_outline || aiResponse.summary || 'Summary not available',
+        geo_rationale: aiResponse.geo_rationale || 'Rationale not available'
       })
       .select()
       .single();
