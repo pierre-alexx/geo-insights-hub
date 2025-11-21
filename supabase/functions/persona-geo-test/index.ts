@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { personaId, pageId, numQuestions = 5 } = await req.json();
+    const { personaId, pageId, numQuestions = 6 } = await req.json();
 
     if (!personaId || !pageId) {
       return new Response(JSON.stringify({ error: 'personaId and pageId are required' }), {
@@ -94,19 +94,19 @@ Needs: ${persona.needs}
     let questions: string[] = [];
     
     try {
-      const rawResult = questionsData.result || questionsData;
+      const rawResult = questionsData.answer || questionsData.result || questionsData;
+
       if (typeof rawResult === 'string') {
+        // Expecting a JSON array string like ["Question 1?", "Question 2?"]
         questions = JSON.parse(rawResult);
       } else if (Array.isArray(rawResult)) {
         questions = rawResult;
       } else if (rawResult && Array.isArray(rawResult.questions)) {
         questions = rawResult.questions;
-      } else {
-        questions = [questionsData.result];
       }
       
       // Filter out any undefined/null questions
-      questions = questions.filter(q => q && typeof q === 'string');
+      questions = questions.filter((q) => q && typeof q === 'string');
       
       // If no valid questions, use fallback
       if (questions.length === 0) {
@@ -125,6 +125,32 @@ Needs: ${persona.needs}
     for (const question of questions) {
       console.log('[persona-geo-test] Testing question:', question);
       
+      // Step 4a: Get LLM answer for this persona question
+      const answerResponse = await fetch(`${supabaseUrl}/functions/v1/geo-engine`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          task: 'answer',
+          pageHtml: page.html_content,
+          pageUrl: page.url,
+          promptText: question,
+          extraContext: personaContext,
+        }),
+      });
+
+      if (!answerResponse.ok) {
+        console.error('[persona-geo-test] Answer error for question:', question, await answerResponse.text());
+        continue;
+      }
+
+      const answerData = await answerResponse.json();
+      console.log('[persona-geo-test] Answer response:', JSON.stringify(answerData));
+      const llmAnswer = (answerData && (answerData.answer || answerData.result)) || '';
+      
+      // Step 4b: Score the LLM answer using GEO engine
       const scoreResponse = await fetch(`${supabaseUrl}/functions/v1/geo-engine`, {
         method: 'POST',
         headers: {
@@ -136,13 +162,13 @@ Needs: ${persona.needs}
           pageHtml: page.html_content,
           pageUrl: page.url,
           promptText: question,
-          llmAnswer: '',
+          llmAnswer: llmAnswer,
           extraContext: personaContext,
         }),
       });
 
       if (!scoreResponse.ok) {
-        console.error('[persona-geo-test] Score error for question:', question);
+        console.error('[persona-geo-test] Score error for question:', question, await scoreResponse.text());
         continue;
       }
 
@@ -162,7 +188,7 @@ Needs: ${persona.needs}
           persona_id: personaId,
           page_id: pageId,
           prompt: question,
-          llm_response: result.llm_response || result.llm_answer || '',
+          llm_response: llmAnswer,
           relevance_score: result.relevance_score || 0,
           comprehension_score: result.comprehension_score || 0,
           visibility_score: result.visibility_score || 0,
@@ -177,7 +203,7 @@ Needs: ${persona.needs}
 
       individualResults.push({
         question,
-        llm_response: result.llm_response || result.llm_answer || '',
+        llm_response: llmAnswer,
         relevance_score: result.relevance_score || 0,
         comprehension_score: result.comprehension_score || 0,
         visibility_score: result.visibility_score || 0,
@@ -188,11 +214,12 @@ Needs: ${persona.needs}
     }
 
     console.log('[persona-geo-test] Step 5: Aggregating persona-level insights...');
-    const avgRelevance = individualResults.reduce((sum, r) => sum + r.relevance_score, 0) / individualResults.length;
-    const avgComprehension = individualResults.reduce((sum, r) => sum + r.comprehension_score, 0) / individualResults.length;
-    const avgVisibility = individualResults.reduce((sum, r) => sum + r.visibility_score, 0) / individualResults.length;
-    const avgRecommendation = individualResults.reduce((sum, r) => sum + r.recommendation_score, 0) / individualResults.length;
-    const avgGeoScore = individualResults.reduce((sum, r) => sum + r.global_geo_score, 0) / individualResults.length;
+    const totalCount = Math.max(individualResults.length, 1);
+    const avgRelevance = individualResults.reduce((sum, r) => sum + r.relevance_score, 0) / totalCount;
+    const avgComprehension = individualResults.reduce((sum, r) => sum + r.comprehension_score, 0) / totalCount;
+    const avgVisibility = individualResults.reduce((sum, r) => sum + r.visibility_score, 0) / totalCount;
+    const avgRecommendation = individualResults.reduce((sum, r) => sum + r.recommendation_score, 0) / totalCount;
+    const avgGeoScore = individualResults.reduce((sum, r) => sum + r.global_geo_score, 0) / totalCount;
 
     const gapAnalysisResponse = await fetch(`${supabaseUrl}/functions/v1/geo-engine`, {
       method: 'POST',
