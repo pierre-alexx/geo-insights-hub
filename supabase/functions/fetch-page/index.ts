@@ -38,17 +38,30 @@ serve(async (req) => {
 
     console.log('Fetching page:', url);
 
-    // Fetch the page
+    // Fetch the page with more realistic browser headers
     const pageResponse = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; GEO-Analyzer/1.0)'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Upgrade-Insecure-Requests': '1'
       }
     });
 
     if (!pageResponse.ok) {
+      console.error('Failed to fetch:', url, pageResponse.status, pageResponse.statusText);
       return new Response(
-        JSON.stringify({ error: `Failed to fetch page: ${pageResponse.statusText}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: `Failed to fetch page: ${pageResponse.status} ${pageResponse.statusText}`,
+          details: 'The page may be inaccessible or blocking automated requests'
+        }),
+        { status: pageResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -123,8 +136,30 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in fetch-page:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Unknown error';
+    let errorDetails = '';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      if (errorMessage.includes('http2 error') || errorMessage.includes('stream error')) {
+        errorDetails = 'HTTP/2 connection failed. The server may be blocking automated requests or experiencing issues.';
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+        errorDetails = 'Request timed out. The server took too long to respond.';
+      } else if (errorMessage.includes('ECONNREFUSED')) {
+        errorDetails = 'Connection refused. The server is not accepting connections.';
+      } else if (errorMessage.includes('certificate')) {
+        errorDetails = 'SSL certificate error. The server certificate may be invalid.';
+      }
+    }
+    
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ 
+        error: errorMessage,
+        details: errorDetails || 'Failed to fetch the page. The server may be temporarily unavailable or blocking requests.'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

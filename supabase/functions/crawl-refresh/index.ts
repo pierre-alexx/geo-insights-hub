@@ -59,12 +59,14 @@ serve(async (req) => {
         
         const pageResponse = await fetch(page.url, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; BNP-GEO-Crawler/1.0)'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8'
           }
         });
 
         if (!pageResponse.ok) {
-          console.error('Failed to fetch:', page.url, pageResponse.statusText);
+          console.error('Failed to fetch:', page.url, pageResponse.status, pageResponse.statusText);
           
           // Update status to error
           await supabase
