@@ -69,9 +69,25 @@ serve(async (req) => {
     const html = await pageResponse.text();
     console.log('Page fetched, size:', html.length);
 
+    // Helper function to decode HTML entities
+    const decodeHTMLEntities = (text: string): string => {
+      return text
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#x27;/g, "'")
+        .replace(/&apos;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+        .replace(/&#x([0-9a-f]+);/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+    };
+
     // Extract title
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    const title = titleMatch ? titleMatch[1].trim() : 'Untitled';
+    const rawTitle = titleMatch ? titleMatch[1].trim() : 'Untitled';
+    const title = decodeHTMLEntities(rawTitle);
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
