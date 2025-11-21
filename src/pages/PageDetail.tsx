@@ -231,6 +231,7 @@ export default function PageDetail() {
         result={selectedResult}
         open={modalOpen}
         onOpenChange={setModalOpen}
+        type="general"
       />
 
       <Dialog open={rewriteModalOpen} onOpenChange={setRewriteModalOpen}>

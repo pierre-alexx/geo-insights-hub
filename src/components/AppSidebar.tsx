@@ -23,7 +23,6 @@ const menuItems = [
   { title: "Results", url: "/results", icon: FileText },
   { title: "Crawler", url: "/crawler", icon: Globe },
   { title: "Rewriter", url: "/rewriter", icon: Wand2 },
-  { title: "Persona GEO", url: "/persona-geo", icon: Target },
   { title: "Personas", url: "/personas", icon: Users },
 ];
 

@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { fetchAllResults, GeoResult } from "@/services/geoService";
+import { fetchAllResults, GeoResult, fetchPersonaResults, PersonaResult } from "@/services/geoService";
 import { ResultsTable } from "@/components/ResultsTable";
 import { GeoResultModal } from "@/components/GeoResultModal";
 import { Loader } from "@/components/Loader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Results() {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<GeoResult[]>([]);
-  const [selectedResult, setSelectedResult] = useState<GeoResult | null>(null);
+  const [personaResults, setPersonaResults] = useState<PersonaResult[]>([]);
+  const [selectedResult, setSelectedResult] = useState<GeoResult | PersonaResult | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [resultType, setResultType] = useState<"general" | "persona">("general");
 
   useEffect(() => {
     loadResults();
@@ -16,13 +19,18 @@ export default function Results() {
 
   const loadResults = async () => {
     setLoading(true);
-    const data = await fetchAllResults();
-    setResults(data);
+    const [generalData, personaData] = await Promise.all([
+      fetchAllResults(),
+      fetchPersonaResults("")
+    ]);
+    setResults(generalData);
+    setPersonaResults(personaData);
     setLoading(false);
   };
 
-  const handleViewDetails = (result: GeoResult) => {
+  const handleViewDetails = (result: GeoResult | PersonaResult) => {
     setSelectedResult(result);
+    setResultType("pageUrl" in result ? "general" : "persona");
     setModalOpen(true);
   };
 
@@ -39,12 +47,24 @@ export default function Results() {
         </p>
       </div>
 
-      <ResultsTable results={results} onViewDetails={handleViewDetails} />
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="general">General Tests</TabsTrigger>
+          <TabsTrigger value="persona">Persona Tests</TabsTrigger>
+        </TabsList>
+        <TabsContent value="general" className="mt-6">
+          <ResultsTable results={results} onViewDetails={handleViewDetails} type="general" />
+        </TabsContent>
+        <TabsContent value="persona" className="mt-6">
+          <ResultsTable results={personaResults} onViewDetails={handleViewDetails} type="persona" />
+        </TabsContent>
+      </Tabs>
 
       <GeoResultModal
         result={selectedResult}
         open={modalOpen}
         onOpenChange={setModalOpen}
+        type={resultType}
       />
     </div>
   );

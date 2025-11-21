@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchPage, runPageGeoTest, GeoResult, Page, createPageManually } from "@/services/geoService";
+import { fetchPage, runPageGeoTest, GeoResult, Page, createPageManually, fetchPersonas, runPersonaGeoTest, type Persona } from "@/services/geoService";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,9 +16,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader } from "@/components/Loader";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { PlayCircle, ExternalLink, Copy, Download, FileText } from "lucide-react";
+import { PlayCircle, ExternalLink, Copy, Download, FileText, Target, User, TrendingUp, AlertCircle, CheckCircle2, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const promptTypes = [
   "Informational",
@@ -30,6 +33,7 @@ const promptTypes = [
 
 export default function RunTest() {
   const navigate = useNavigate();
+  const [testMode, setTestMode] = useState<"general" | "persona">("general");
   const [url, setUrl] = useState("");
   const [fetchingPage, setFetchingPage] = useState(false);
   const [page, setPage] = useState<Page | null>(null);
@@ -43,6 +47,29 @@ export default function RunTest() {
   const [manualTitle, setManualTitle] = useState("");
   const [manualHtml, setManualHtml] = useState("");
   const [creatingManually, setCreatingManually] = useState(false);
+
+  // Persona test state
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
+  const [numQuestions, setNumQuestions] = useState<number>(6);
+  const [personaResults, setPersonaResults] = useState<any>(null);
+  const [selectedResult, setSelectedResult] = useState<any>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
+  useEffect(() => {
+    loadPersonas();
+  }, []);
+
+  const loadPersonas = async () => {
+    try {
+      const data = await fetchPersonas();
+      setPersonas(data);
+    } catch (error) {
+      console.error("Failed to load personas:", error);
+    }
+  };
+
+  const selectedPersona = personas.find(p => p.id === selectedPersonaId);
 
   const handleFetchPage = async () => {
     if (!url.trim()) {
@@ -64,26 +91,49 @@ export default function RunTest() {
   };
 
   const handleRunTest = async () => {
-    if (!page) {
-      toast.error("Please fetch a page first");
-      return;
-    }
-    if (!promptType || !promptText.trim()) {
-      toast.error("Please select a prompt type and enter prompt text");
-      return;
-    }
+    if (testMode === "general") {
+      if (!page) {
+        toast.error("Please fetch a page first");
+        return;
+      }
+      if (!promptType || !promptText.trim()) {
+        toast.error("Please select a prompt type and enter prompt text");
+        return;
+      }
 
-    setLoading(true);
-    setResult(null);
-    try {
-      const testResult = await runPageGeoTest(page.id, promptType, promptText);
-      setResult(testResult);
-      toast.success("Page GEO test completed and saved successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to run GEO test");
-      console.error(error);
-    } finally {
-      setLoading(false);
+      setLoading(true);
+      setResult(null);
+      setPersonaResults(null);
+      try {
+        const testResult = await runPageGeoTest(page.id, promptType, promptText);
+        setResult(testResult);
+        toast.success("Page GEO test completed and saved successfully");
+      } catch (error: any) {
+        toast.error(error.message || "Failed to run GEO test");
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Persona mode
+      if (!selectedPersonaId || !page) {
+        toast.error("Please select both a persona and a page");
+        return;
+      }
+
+      setLoading(true);
+      setResult(null);
+      setPersonaResults(null);
+      try {
+        const testResult = await runPersonaGeoTest(selectedPersonaId, page.id, numQuestions);
+        setPersonaResults(testResult);
+        toast.success("Persona GEO test completed!");
+      } catch (error: any) {
+        toast.error(error.message || "Failed to run persona test");
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -112,9 +162,11 @@ export default function RunTest() {
     setPromptType("");
     setPromptText("");
     setResult(null);
+    setPersonaResults(null);
     setManualUrl("");
     setManualTitle("");
     setManualHtml("");
+    setSelectedPersonaId("");
   };
 
   const handleCopyAnswer = () => {
@@ -135,7 +187,7 @@ export default function RunTest() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Run Page GEO Test</h1>
+        <h1 className="text-3xl font-bold text-foreground">Run GEO Test</h1>
         <p className="text-muted-foreground mt-1">
           Evaluate how well LLMs understand and use specific BNP pages
         </p>
@@ -143,7 +195,25 @@ export default function RunTest() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-foreground">1. Load Page</CardTitle>
+          <CardTitle className="text-foreground">1. Select Test Type</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup value={testMode} onValueChange={(value: any) => setTestMode(value)}>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="general" id="general" />
+              <Label htmlFor="general">General Test</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="persona" id="persona" />
+              <Label htmlFor="persona">Persona Test</Label>
+            </div>
+          </RadioGroup>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-foreground">2. Load Page</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="fetch">
@@ -235,50 +305,101 @@ export default function RunTest() {
         </CardContent>
       </Card>
 
-      {page && !result && (
+      {page && !result && !personaResults && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-foreground">2. Configure Test</CardTitle>
+            <CardTitle className="text-foreground">3. Configure Test</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="prompt-type">Prompt Type</Label>
-              <Select value={promptType} onValueChange={setPromptType} disabled={loading}>
-                <SelectTrigger id="prompt-type">
-                  <SelectValue placeholder="Select prompt type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {promptTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {testMode === "general" ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="prompt-type">Prompt Type</Label>
+                  <Select value={promptType} onValueChange={setPromptType} disabled={loading}>
+                    <SelectTrigger id="prompt-type">
+                      <SelectValue placeholder="Select prompt type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {promptTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="prompt-text">Prompt to Send to LLM</Label>
-              <Textarea
-                id="prompt-text"
-                placeholder="Enter your prompt here..."
-                value={promptText}
-                onChange={(e) => setPromptText(e.target.value)}
-                rows={4}
-                className="resize-none"
-                disabled={loading}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="prompt-text">Prompt to Send to LLM</Label>
+                  <Textarea
+                    id="prompt-text"
+                    placeholder="Enter your prompt here..."
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
+                    rows={4}
+                    className="resize-none"
+                    disabled={loading}
+                  />
+                </div>
 
-            <Button 
-              onClick={handleRunTest} 
-              disabled={loading || !promptType || !promptText.trim()}
-              className="w-full"
-              size="lg"
-            >
-              <PlayCircle className="mr-2 h-5 w-5" />
-              Run Page GEO Test
-            </Button>
+                <Button 
+                  onClick={handleRunTest} 
+                  disabled={loading || !promptType || !promptText.trim()}
+                  className="w-full"
+                  size="lg"
+                >
+                  <PlayCircle className="mr-2 h-5 w-5" />
+                  Run Page GEO Test
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label>Select Persona</Label>
+                  <Select value={selectedPersonaId} onValueChange={setSelectedPersonaId} disabled={loading}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a persona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {personas.map((persona) => (
+                        <SelectItem key={persona.id} value={persona.id}>
+                          {persona.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedPersona && (
+                    <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
+                      <p><strong>Description:</strong> {selectedPersona.description}</p>
+                      <p><strong>Goal:</strong> {selectedPersona.goal}</p>
+                      <p><strong>Risk Profile:</strong> {selectedPersona.risk_profile}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Number of Questions</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={numQuestions}
+                    onChange={(e) => setNumQuestions(parseInt(e.target.value) || 5)}
+                    disabled={loading}
+                  />
+                </div>
+
+                <Button 
+                  onClick={handleRunTest} 
+                  disabled={loading || !selectedPersonaId}
+                  className="w-full"
+                  size="lg"
+                >
+                  <Target className="mr-2 h-5 w-5" />
+                  Run Persona GEO Test
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
@@ -286,7 +407,7 @@ export default function RunTest() {
       {loading && (
         <Card>
           <CardContent className="py-12">
-            <Loader text="Running page GEO test... This may take 15-30 seconds..." />
+            <Loader text={testMode === "general" ? "Running page GEO test... This may take 15-30 seconds..." : "Running persona GEO test... This may take up to 2 minutes..."} />
           </CardContent>
         </Card>
       )}
@@ -381,6 +502,225 @@ export default function RunTest() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {personaResults && !loading && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Persona Test Results
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => navigate("/results")} variant="outline">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    View in Results
+                  </Button>
+                  <Button onClick={handleNewTest}>
+                    New Test
+                  </Button>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {personaResults.questions.map((question: string, idx: number) => (
+                  <div key={idx} className="p-3 bg-muted rounded-lg">
+                    <span className="font-medium text-sm">Q{idx + 1}:</span> {question}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Individual GEO Scores</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Question</TableHead>
+                    <TableHead>Relevance</TableHead>
+                    <TableHead>Comprehension</TableHead>
+                    <TableHead>Visibility</TableHead>
+                    <TableHead>Recommendation</TableHead>
+                    <TableHead>Global Score</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {personaResults.individual_results.map((result: any, idx: number) => (
+                    <TableRow key={idx}>
+                      <TableCell className="max-w-xs truncate">{result.question}</TableCell>
+                      <TableCell>
+                        <Badge variant={getScoreColor(result.relevance_score)}>
+                          {formatScore(result.relevance_score)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getScoreColor(result.comprehension_score)}>
+                          {formatScore(result.comprehension_score)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getScoreColor(result.visibility_score)}>
+                          {formatScore(result.visibility_score)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getScoreColor(result.recommendation_score)}>
+                          {formatScore(result.recommendation_score)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getScoreColor(result.global_geo_score)}>
+                          {formatScore(result.global_geo_score)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedResult(result);
+                            setShowDetailModal(true);
+                          }}
+                        >
+                          View Details
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Aggregated Persona Insights
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{formatScore(personaResults.aggregated.avg_geo_score)}</div>
+                  <div className="text-sm text-muted-foreground">Avg GEO Score</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{formatScore(personaResults.aggregated.avg_relevance)}</div>
+                  <div className="text-sm text-muted-foreground">Relevance</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{formatScore(personaResults.aggregated.avg_comprehension)}</div>
+                  <div className="text-sm text-muted-foreground">Comprehension</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{formatScore(personaResults.aggregated.avg_visibility)}</div>
+                  <div className="text-sm text-muted-foreground">Visibility</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{formatScore(personaResults.aggregated.avg_recommendation)}</div>
+                  <div className="text-sm text-muted-foreground">Recommendation</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    Persona Strengths
+                  </h3>
+                  <div className="space-y-1">
+                    {personaResults.aggregated.persona_strengths.map((strength: string, idx: number) => (
+                      <Badge key={idx} variant="default" className="mr-2 mb-2">
+                        {strength}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                    Persona Weaknesses
+                  </h3>
+                  <div className="space-y-1">
+                    {personaResults.aggregated.persona_weaknesses.map((weakness: string, idx: number) => (
+                      <Badge key={idx} variant="destructive" className="mr-2 mb-2">
+                        {weakness}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-blue-600" />
+                    Persona Opportunities
+                  </h3>
+                  <div className="space-y-1">
+                    {personaResults.aggregated.persona_opportunities.map((opportunity: string, idx: number) => (
+                      <Badge key={idx} variant="secondary" className="mr-2 mb-2">
+                        {opportunity}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-yellow-600" />
+                    Recommendations
+                  </h3>
+                  <ul className="space-y-1 text-sm">
+                    {personaResults.aggregated.persona_recommendations.map((rec: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-muted-foreground">•</span>
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Question Details</DialogTitle>
+                <DialogDescription>LLM response and recommendations</DialogDescription>
+              </DialogHeader>
+              {selectedResult && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold mb-2">Question</h3>
+                    <p className="text-sm">{selectedResult.question}</p>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-2">LLM Response</h3>
+                    <p className="text-sm bg-muted p-3 rounded-lg">{selectedResult.llm_response}</p>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-2">Recommendations</h3>
+                    <ul className="text-sm space-y-1">
+                      {Array.isArray(selectedResult.recommendations) && selectedResult.recommendations.map((rec: string, idx: number) => (
+                        <li key={idx}>• {rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        </>
       )}
     </div>
   );
