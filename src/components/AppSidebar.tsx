@@ -40,31 +40,36 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-4 py-4">
-          <BarChart3 className="h-6 w-6 text-sidebar-primary" />
-          <span className="font-bold text-lg text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-            GEO Dashboard
-          </span>
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+      <SidebarHeader className="border-b border-sidebar-border bg-sidebar px-6 py-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
+            <BarChart3 className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div className="group-data-[collapsible=icon]:hidden">
+            <h2 className="font-bold text-lg text-sidebar-foreground">GEO</h2>
+            <p className="text-xs text-muted-foreground">Dashboard</p>
+          </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/70">Menu</SidebarGroupLabel>
+      <SidebarContent className="bg-sidebar">
+        <SidebarGroup className="px-3 py-4">
+          <SidebarGroupLabel className="text-muted-foreground text-xs font-semibold uppercase tracking-wider px-3 mb-2">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="h-11">
                     <NavLink 
                       to={item.url} 
                       end
-                      className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-primary text-sidebar-primary-foreground"
+                      className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-xl transition-all duration-200"
+                      activeClassName="bg-primary text-primary-foreground font-medium shadow-sm"
                     >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <item.icon className="h-5 w-5" />
+                      <span className="text-sm font-medium">{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -73,14 +78,14 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border p-4">
+      <SidebarFooter className="border-t border-sidebar-border bg-sidebar p-4">
         <Button
           onClick={handleLogout}
           variant="ghost"
-          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-xl h-11"
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+          <LogOut className="mr-3 h-5 w-5" />
+          <span className="group-data-[collapsible=icon]:hidden text-sm font-medium">Logout</span>
         </Button>
       </SidebarFooter>
     </Sidebar>

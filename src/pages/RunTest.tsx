@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader } from "@/components/Loader";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -185,39 +185,53 @@ export default function RunTest() {
   const formatScore = (score: number) => `${Math.round(score * 100)}%`;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Run GEO Test</h1>
-        <p className="text-muted-foreground mt-1">
+    <div className="max-w-6xl mx-auto space-y-8">
+      {/* Page Header */}
+      <div className="space-y-2">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">Run GEO Test</h1>
+        <p className="text-base text-muted-foreground">
           Evaluate how well LLMs understand and use specific BNP pages
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-foreground">1. Load Page</CardTitle>
+      {/* Step 1: Load Page */}
+      <Card className="overflow-hidden">
+        <CardHeader className="bg-muted/30">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
+              1
+            </div>
+            <CardTitle className="text-foreground">Load Page</CardTitle>
+          </div>
+          <CardDescription>Fetch a BNP Paribas page or input HTML manually</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="fetch">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="fetch">Fetch from URL</TabsTrigger>
-              <TabsTrigger value="manual">Manual Input</TabsTrigger>
+          <Tabs defaultValue="fetch" className="mt-6">
+            <TabsList className="grid w-full grid-cols-2 bg-muted/50">
+              <TabsTrigger value="fetch" className="data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                Fetch from URL
+              </TabsTrigger>
+              <TabsTrigger value="manual" className="data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                Manual Input
+              </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="fetch" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="url">BNP Paribas Page URL</Label>
-                <div className="flex gap-2">
+            <TabsContent value="fetch" className="space-y-4 mt-6">
+              <div className="space-y-3">
+                <Label htmlFor="url" className="text-sm font-medium">BNP Paribas Page URL</Label>
+                <div className="flex gap-3">
                   <Input
                     id="url"
                     placeholder="https://www.bnpparibas.com/..."
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     disabled={fetchingPage || page !== null}
+                    className="h-11 rounded-xl"
                   />
                   <Button 
                     onClick={handleFetchPage} 
                     disabled={fetchingPage || !url.trim() || page !== null}
+                    size="lg"
                   >
                     <Download className="mr-2 h-4 w-4" />
                     Fetch
@@ -226,38 +240,40 @@ export default function RunTest() {
               </div>
             </TabsContent>
 
-            <TabsContent value="manual" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="manual-url">Page URL</Label>
+            <TabsContent value="manual" className="space-y-4 mt-6">
+              <div className="space-y-3">
+                <Label htmlFor="manual-url" className="text-sm font-medium">Page URL</Label>
                 <Input
                   id="manual-url"
                   placeholder="https://group.bnpparibas/..."
                   value={manualUrl}
                   onChange={(e) => setManualUrl(e.target.value)}
                   disabled={creatingManually || page !== null}
+                  className="h-11 rounded-xl"
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="manual-title">Page Title</Label>
+              <div className="space-y-3">
+                <Label htmlFor="manual-title" className="text-sm font-medium">Page Title</Label>
                 <Input
                   id="manual-title"
                   placeholder="Enter page title"
                   value={manualTitle}
                   onChange={(e) => setManualTitle(e.target.value)}
                   disabled={creatingManually || page !== null}
+                  className="h-11 rounded-xl"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="manual-html">HTML Content</Label>
+              <div className="space-y-3">
+                <Label htmlFor="manual-html" className="text-sm font-medium">HTML Content</Label>
                 <Textarea
                   id="manual-html"
                   placeholder="Paste the full HTML content here..."
                   value={manualHtml}
                   onChange={(e) => setManualHtml(e.target.value)}
                   rows={8}
-                  className="font-mono text-xs"
+                  className="font-mono text-xs rounded-xl"
                   disabled={creatingManually || page !== null}
                 />
               </div>
@@ -266,6 +282,7 @@ export default function RunTest() {
                 onClick={handleCreateManually} 
                 disabled={creatingManually || !manualUrl.trim() || !manualTitle.trim() || !manualHtml.trim() || page !== null}
                 className="w-full"
+                size="lg"
               >
                 <FileText className="mr-2 h-4 w-4" />
                 Create Page from Manual Input
@@ -274,14 +291,19 @@ export default function RunTest() {
           </Tabs>
 
           {page && (
-            <div className="bg-muted p-4 rounded-md mt-4">
-              <h3 className="font-semibold text-sm mb-2">Page Loaded:</h3>
-              <p className="text-sm text-muted-foreground mb-1">
-                <span className="font-medium">Title:</span> {page.title}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium">URL:</span> {page.url}
-              </p>
+            <div className="bg-primary-soft border border-primary-border p-6 rounded-xl mt-6">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-primary mt-0.5" />
+                <div className="flex-1 space-y-1">
+                  <h3 className="font-semibold text-sm text-foreground">Page Loaded Successfully</h3>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">Title:</span> {page.title}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">URL:</span> {page.url}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
@@ -289,52 +311,67 @@ export default function RunTest() {
 
       {page && !result && !personaResults && (
         <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-foreground">2. Select Test Type</CardTitle>
+          {/* Step 2: Select Test Type */}
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-muted/30">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
+                  2
+                </div>
+                <CardTitle className="text-foreground">Select Test Type</CardTitle>
+              </div>
+              <CardDescription>Choose between general or persona-based evaluation</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 mt-6">
                 <Button
                   variant={testMode === "general" ? "default" : "outline"}
-                  className="h-24 flex flex-col items-center justify-center gap-2"
+                  className="h-32 flex flex-col items-center justify-center gap-3 hover:scale-[1.02] transition-transform"
                   onClick={() => setTestMode("general")}
                 >
-                  <Target className="h-6 w-6" />
+                  <Target className="h-8 w-8" />
                   <div className="text-center">
-                    <div className="font-semibold">General Test</div>
-                    <div className="text-xs opacity-80">Custom prompt evaluation</div>
+                    <div className="font-semibold text-base">General Test</div>
+                    <div className="text-xs opacity-80 mt-1">Custom prompt evaluation</div>
                   </div>
                 </Button>
                 <Button
                   variant={testMode === "persona" ? "default" : "outline"}
-                  className="h-24 flex flex-col items-center justify-center gap-2"
+                  className="h-32 flex flex-col items-center justify-center gap-3 hover:scale-[1.02] transition-transform"
                   onClick={() => setTestMode("persona")}
                 >
-                  <User className="h-6 w-6" />
+                  <User className="h-8 w-8" />
                   <div className="text-center">
-                    <div className="font-semibold">Persona Test</div>
-                    <div className="text-xs opacity-80">User journey simulation</div>
+                    <div className="font-semibold text-base">Persona Test</div>
+                    <div className="text-xs opacity-80 mt-1">User journey simulation</div>
                   </div>
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-foreground">3. Configure Test</CardTitle>
+          {/* Step 3: Configure Test */}
+          <Card className="overflow-hidden">
+            <CardHeader className="bg-muted/30">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
+                  3
+                </div>
+                <CardTitle className="text-foreground">Configure Test</CardTitle>
+              </div>
+              <CardDescription>
+                {testMode === "general" ? "Set up your custom prompt" : "Choose persona and questions"}
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {testMode === "general" ? (
+            <CardContent className="space-y-6 mt-6">{testMode === "general" ? (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="prompt-type">Prompt Type</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="prompt-type" className="text-sm font-medium">Prompt Type</Label>
                   <Select value={promptType} onValueChange={setPromptType} disabled={loading}>
-                    <SelectTrigger id="prompt-type">
+                    <SelectTrigger id="prompt-type" className="h-11 rounded-xl">
                       <SelectValue placeholder="Select prompt type" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-xl">
                       {promptTypes.map((type) => (
                         <SelectItem key={type} value={type}>
                           {type}
@@ -344,15 +381,15 @@ export default function RunTest() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="prompt-text">Prompt to Send to LLM</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="prompt-text" className="text-sm font-medium">Prompt to Send to LLM</Label>
                   <Textarea
                     id="prompt-text"
                     placeholder="Enter your prompt here..."
                     value={promptText}
                     onChange={(e) => setPromptText(e.target.value)}
-                    rows={4}
-                    className="resize-none"
+                    rows={5}
+                    className="resize-none rounded-xl"
                     disabled={loading}
                   />
                 </div>
@@ -369,13 +406,13 @@ export default function RunTest() {
               </>
             ) : (
               <>
-                <div className="space-y-2">
-                  <Label>Select Persona</Label>
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Select Persona</Label>
                   <Select value={selectedPersonaId} onValueChange={setSelectedPersonaId} disabled={loading}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 rounded-xl">
                       <SelectValue placeholder="Choose a persona" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-xl">
                       {personas.map((persona) => (
                         <SelectItem key={persona.id} value={persona.id}>
                           {persona.name}
@@ -384,16 +421,16 @@ export default function RunTest() {
                     </SelectContent>
                   </Select>
                   {selectedPersona && (
-                    <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
-                      <p><strong>Description:</strong> {selectedPersona.description}</p>
-                      <p><strong>Goal:</strong> {selectedPersona.goal}</p>
-                      <p><strong>Risk Profile:</strong> {selectedPersona.risk_profile}</p>
+                    <div className="p-4 bg-muted/50 rounded-xl text-sm space-y-2 border border-border">
+                      <p><strong className="text-foreground">Description:</strong> <span className="text-muted-foreground">{selectedPersona.description}</span></p>
+                      <p><strong className="text-foreground">Goal:</strong> <span className="text-muted-foreground">{selectedPersona.goal}</span></p>
+                      <p><strong className="text-foreground">Risk Profile:</strong> <span className="text-muted-foreground">{selectedPersona.risk_profile}</span></p>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Number of Questions</Label>
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Number of Questions</Label>
                   <Input
                     type="number"
                     min="1"
@@ -401,6 +438,7 @@ export default function RunTest() {
                     value={numQuestions}
                     onChange={(e) => setNumQuestions(parseInt(e.target.value) || 5)}
                     disabled={loading}
+                    className="h-11 rounded-xl"
                   />
                 </div>
 
