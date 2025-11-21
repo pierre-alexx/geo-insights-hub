@@ -1,5 +1,8 @@
-import { BarChart3, PlayCircle, FileText } from "lucide-react";
+import { BarChart3, PlayCircle, FileText, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   Sidebar,
   SidebarContent,
@@ -10,7 +13,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: BarChart3 },
@@ -19,6 +24,19 @@ const menuItems = [
 ];
 
 export function AppSidebar() {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      toast.success("Logged out successfully");
+      navigate("/auth");
+    } catch (error: any) {
+      toast.error("Error logging out");
+    }
+  };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
@@ -53,6 +71,16 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border p-4">
+        <Button
+          onClick={handleLogout}
+          variant="ghost"
+          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 }

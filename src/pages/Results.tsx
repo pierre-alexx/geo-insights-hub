@@ -11,14 +11,15 @@ export default function Results() {
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
-    async function loadResults() {
-      setLoading(true);
-      const data = await fetchAllResults();
-      setResults(data);
-      setLoading(false);
-    }
     loadResults();
   }, []);
+
+  const loadResults = async () => {
+    setLoading(true);
+    const data = await fetchAllResults();
+    setResults(data);
+    setLoading(false);
+  };
 
   const handleViewDetails = (result: GeoResult) => {
     setSelectedResult(result);
