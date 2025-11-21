@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchPageStats, fetchPages, fetchRewriteStats, fetchIndexabilityStats } from "@/services/geoService";
 import { ScoreCard } from "@/components/ScoreCard";
 import { Loader } from "@/components/Loader";
-import { Activity, TrendingUp, Eye, ThumbsUp, Award, Globe, Wand2, FileSearch } from "lucide-react";
+import { Activity, TrendingUp, Eye, ThumbsUp, Award, Globe, Wand2, FileSearch, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [pages, setPages] = useState<any[]>([]);
   const [rewriteStats, setRewriteStats] = useState<any>(null);
   const [indexabilityStats, setIndexabilityStats] = useState<any>(null);
+  const [qualityScore, setQualityScore] = useState<number>(0.85);
 
   useEffect(() => {
     async function loadData() {
@@ -70,7 +71,7 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-5">
+      <div className="grid gap-6 md:grid-cols-6">
         <ScoreCard
           title="Relevance"
           value={formatScore(stats.avgRelevance)}
@@ -100,6 +101,12 @@ export default function Dashboard() {
           value={indexabilityStats ? formatScore(indexabilityStats.avgIndexability) : 'N/A'}
           icon={FileSearch}
           description="How LLM-friendly is the HTML?"
+        />
+        <ScoreCard
+          title="Quality"
+          value={formatScore(qualityScore)}
+          icon={ShieldCheck}
+          description="GEO Master Quality compliance"
         />
       </div>
 

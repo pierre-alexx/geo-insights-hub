@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/Loader";
 import { toast } from "sonner";
 import { DiffViewer } from "@/components/DiffViewer";
-import { Download, FileText, Copy, Target, User, ExternalLink } from "lucide-react";
+import { Download, FileText, Copy, Target, User, ExternalLink, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
@@ -20,6 +20,7 @@ export default function PageRewriter() {
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RewriteResult | null>(null);
+  const [showQualityPanel, setShowQualityPanel] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -336,6 +337,127 @@ export default function PageRewriter() {
               </Button>
             </div>
           </div>
+
+          {result.quality_check && (
+            <Card className={`border-2 ${
+              result.quality_check.passes_validation 
+                ? 'border-primary' 
+                : result.quality_check.quality_score > 0.6 
+                  ? 'border-yellow-500' 
+                  : 'border-destructive'
+            }`}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    {result.quality_check.passes_validation ? (
+                      <CheckCircle className="h-5 w-5 text-primary" />
+                    ) : (
+                      <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                    )}
+                    Quality Check Results
+                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <Badge variant={result.quality_check.passes_validation ? "default" : "secondary"}>
+                      Quality Score: {Math.round(result.quality_check.quality_score * 100)}%
+                    </Badge>
+                    <Button
+                      onClick={() => setShowQualityPanel(!showQualityPanel)}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      {showQualityPanel ? 'Hide' : 'Show'}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              {showQualityPanel && (
+                <CardContent className="space-y-4">
+                  {result.quality_check.structural_issues.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                        <XCircle className="h-4 w-4 text-destructive" />
+                        Structural Issues
+                      </h3>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        {result.quality_check.structural_issues.map((issue, idx) => (
+                          <li key={idx}>{issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {result.quality_check.compliance_issues.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                        Compliance Issues
+                      </h3>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        {result.quality_check.compliance_issues.map((issue, idx) => (
+                          <li key={idx}>{issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {result.quality_check.accuracy_issues.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                        <XCircle className="h-4 w-4 text-destructive" />
+                        Accuracy Issues
+                      </h3>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        {result.quality_check.accuracy_issues.map((issue, idx) => (
+                          <li key={idx}>{issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {result.quality_check.hallucination_risks.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                        Hallucination Risks
+                      </h3>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        {result.quality_check.hallucination_risks.map((risk, idx) => (
+                          <li key={idx}>{risk}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {result.quality_check.recommended_fixes.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-primary" />
+                        Recommended Fixes
+                      </h3>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        {result.quality_check.recommended_fixes.map((fix, idx) => (
+                          <li key={idx}>{fix}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {result.quality_check.passes_validation && 
+                   result.quality_check.structural_issues.length === 0 &&
+                   result.quality_check.compliance_issues.length === 0 &&
+                   result.quality_check.accuracy_issues.length === 0 &&
+                   result.quality_check.hallucination_risks.length === 0 && (
+                    <div className="flex items-center gap-2 text-primary">
+                      <CheckCircle className="h-5 w-5" />
+                      <p className="text-sm font-medium">
+                        All quality checks passed! This rewrite meets GEO Master Quality Framework standards.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           <DiffViewer
             originalHtml={result.original_page_html}
