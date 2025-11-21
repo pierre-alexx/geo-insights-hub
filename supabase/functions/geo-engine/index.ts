@@ -149,17 +149,25 @@ ${pageHtml}
 
 ${rewriteContext ? `CONTEXT:\n${rewriteContext}\n\n` : ''}TASK:
 Rewrite this page to be optimized for LLMs according to the GEO framework and playbook.
-${extraContext?.recommendations?.length ? `Address these specific recommendations:\n${extraContext.recommendations.join('\n')}\n\n` : ''}${extraContext?.persona ? `Tailor the content for this persona:\nName: ${extraContext.persona.name}\nDescription: ${extraContext.persona.description}\nGoal: ${extraContext.persona.goal}\nNeeds: ${extraContext.persona.needs}\nRisk Profile: ${extraContext.persona.risk_profile}\n\n` : ''}IMPORTANT: Return ONLY valid JSON in this EXACT format. For the HTML field, encode the HTML as base64 to avoid escaping issues.
+${extraContext?.recommendations?.length ? `Address these specific recommendations:\n${extraContext.recommendations.join('\n')}\n\n` : ''}${extraContext?.persona ? `Tailor the content for this persona:\nName: ${extraContext.persona.name}\nDescription: ${extraContext.persona.description}\nGoal: ${extraContext.persona.goal}\nNeeds: ${extraContext.persona.needs}\nRisk Profile: ${extraContext.persona.risk_profile}\n\n` : ''}Return your answer in the following PLAIN TEXT format using the exact section markers below:
 
-{
-  "new_page_html_base64": "<base64 encoded HTML here>",
-  "new_page_outline": "hierarchical outline as plain text",
-  "geo_rationale": "explanation of improvements as plain text",
-  ${extraContext?.persona ? '"persona_rationale": "persona-specific explanation as plain text"' : '"persona_rationale": null'}
-}
+===NEW_PAGE_HTML===
+<full rewritten HTML here>
+===END_NEW_PAGE_HTML===
 
-Use standard base64 encoding for new_page_html_base64. All other fields should be plain text with proper JSON escaping.`;
-        responseFormat = { type: "json_object" };
+===NEW_PAGE_OUTLINE===
+<hierarchical outline as plain text>
+===END_NEW_PAGE_OUTLINE===
+
+===GEO_RATIONALE===
+<explanation of improvements as plain text>
+===END_GEO_RATIONALE===
+
+===PERSONA_RATIONALE===
+<persona-specific explanation as plain text, or leave empty if not applicable>
+===END_PERSONA_RATIONALE===`;
+        // For rewrite we want free-form text, not JSON response_format
+        responseFormat = undefined;
         break;
 
       case 'gap-analysis':
@@ -236,37 +244,39 @@ Return the best possible answer, structured according to the playbook.`;
     let result;
     if (task === 'answer') {
       result = { answer: content };
+    } else if (task === 'rewrite') {
+      // For rewrite, parse the plain-text sections using markers
+      const extractSection = (label: string) => {
+        const startTag = `===${label}===`;
+        const endTag = `===END_${label}===`;
+        const startIndex = content.indexOf(startTag);
+        if (startIndex === -1) return '';
+        const afterStart = startIndex + startTag.length;
+        const endIndex = content.indexOf(endTag, afterStart);
+        const rawSection = endIndex === -1
+          ? content.substring(afterStart)
+          : content.substring(afterStart, endIndex);
+        return rawSection.trim();
+      };
+
+      const newPageHtml = extractSection('NEW_PAGE_HTML');
+      const newPageOutline = extractSection('NEW_PAGE_OUTLINE');
+      const geoRationale = extractSection('GEO_RATIONALE');
+      const personaRationale = extractSection('PERSONA_RATIONALE');
+
+      result = {
+        new_page_html: newPageHtml || '',
+        new_page_outline: newPageOutline || '',
+        geo_rationale: geoRationale || '',
+        persona_rationale: personaRationale || null,
+      };
     } else {
       try {
-        // For rewrite task, extract JSON from markdown code block if present
-        if (content.includes('```json')) {
-          const jsonMatch = content.match(/```json\s*\n([\s\S]*?)\n```/);
-          if (jsonMatch) {
-            result = JSON.parse(jsonMatch[1]);
-          } else {
-            result = JSON.parse(content);
-          }
-        } else {
-          result = JSON.parse(content);
-        }
-
-        // Decode base64 HTML if present (for rewrite task)
-        if (task === 'rewrite' && result.new_page_html_base64) {
-          try {
-            const decoder = new TextDecoder();
-            const base64Data = result.new_page_html_base64;
-            const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-            result.new_page_html = decoder.decode(binaryData);
-            delete result.new_page_html_base64;
-          } catch (decodeError) {
-            console.error('Base64 decode error:', decodeError);
-            // If decode fails, try to use the content as-is
-            result.new_page_html = result.new_page_html_base64 || "";
-          }
-        }
+        // For scoring / gap-analysis tasks we still expect JSON
+        result = JSON.parse(content);
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
-        console.error('Content that failed to parse (first 500 chars):', content.substring(0, 500));
+        console.error('Content that failed to parse (first 500 chars):', String(content).substring(0, 500));
         throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
       }
     }
