@@ -58,7 +58,7 @@ export function DiffViewer({ originalHtml, rewrittenHtml, pageUrl }: DiffViewerP
                 <iframe
                   srcDoc={`${baseTag}${originalHtml}`}
                   className="w-full h-[600px] bg-white"
-                  sandbox="allow-same-origin"
+                  sandbox="allow-same-origin allow-top-navigation-by-user-activation"
                   title="Original Page"
                 />
               </div>
@@ -69,7 +69,7 @@ export function DiffViewer({ originalHtml, rewrittenHtml, pageUrl }: DiffViewerP
                 <iframe
                   srcDoc={`${baseTag}${rewrittenHtml}`}
                   className="w-full h-[600px] bg-white"
-                  sandbox="allow-same-origin"
+                  sandbox="allow-same-origin allow-top-navigation-by-user-activation"
                   title="Rewritten Page"
                 />
               </div>
