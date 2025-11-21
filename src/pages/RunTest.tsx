@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { PlayCircle, ExternalLink, Copy, Download, FileText, Target, User, TrendingUp, AlertCircle, CheckCircle2, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -294,16 +294,30 @@ export default function RunTest() {
               <CardTitle className="text-foreground">2. Select Test Type</CardTitle>
             </CardHeader>
             <CardContent>
-              <RadioGroup value={testMode} onValueChange={(value: any) => setTestMode(value)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="general" id="general" />
-                  <Label htmlFor="general">General Test</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="persona" id="persona" />
-                  <Label htmlFor="persona">Persona Test</Label>
-                </div>
-              </RadioGroup>
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  variant={testMode === "general" ? "default" : "outline"}
+                  className="h-24 flex flex-col items-center justify-center gap-2"
+                  onClick={() => setTestMode("general")}
+                >
+                  <Target className="h-6 w-6" />
+                  <div className="text-center">
+                    <div className="font-semibold">General Test</div>
+                    <div className="text-xs opacity-80">Custom prompt evaluation</div>
+                  </div>
+                </Button>
+                <Button
+                  variant={testMode === "persona" ? "default" : "outline"}
+                  className="h-24 flex flex-col items-center justify-center gap-2"
+                  onClick={() => setTestMode("persona")}
+                >
+                  <User className="h-6 w-6" />
+                  <div className="text-center">
+                    <div className="font-semibold">Persona Test</div>
+                    <div className="text-xs opacity-80">User journey simulation</div>
+                  </div>
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
