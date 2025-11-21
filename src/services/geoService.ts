@@ -25,6 +25,33 @@ export interface GeoResult {
   timestamp: string;
 }
 
+export async function geoEngine(payload: {
+  task: 'score' | 'rewrite' | 'gap-analysis' | 'answer';
+  pageHtml?: string;
+  pageUrl?: string;
+  promptText?: string;
+  promptType?: string;
+  llmAnswer?: string;
+  extraContext?: string;
+}) {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/geo-engine`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Geo-engine request failed');
+  }
+
+  return await response.json();
+}
+
 export async function fetchPage(url: string): Promise<Page> {
   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
   
