@@ -11,31 +11,31 @@ interface ScoreCardProps {
 
 export function ScoreCard({ title, value, icon: Icon, trend, description }: ScoreCardProps) {
   return (
-    <Card className="hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 overflow-hidden">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+    <Card className="hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 h-full">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-tight">
               {title}
             </p>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft">
-            <Icon className="h-5 w-5 text-primary" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft">
+            <Icon className="h-4 w-4 text-primary" />
           </div>
         </div>
         
-        <div className="text-4xl font-bold text-foreground mb-3 tracking-tight">
+        <div className="text-3xl font-bold text-foreground mb-2 tracking-tight break-words">
           {value}
         </div>
         
         {trend && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground leading-relaxed">
             {trend}
           </p>
         )}
         
         {description && (
-          <p className="text-sm text-muted-foreground leading-relaxed">
+          <p className="text-xs text-muted-foreground leading-relaxed mt-1">
             {description}
           </p>
         )}

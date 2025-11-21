@@ -178,10 +178,10 @@ export default function PageRewriter() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Page Rewriter (GEO Optimized)</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Page Rewriter (GEO Optimized)</h1>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1">
           Rewrite pages using GEO recommendations and persona insights
         </p>
       </div>
@@ -343,29 +343,29 @@ export default function PageRewriter() {
             pageUrl={result.page_url}
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <Card className="min-w-0">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>New Page Outline</CardTitle>
-                  <Button onClick={handleCopyOutline} variant="ghost" size="sm">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="truncate">New Page Outline</CardTitle>
+                  <Button onClick={handleCopyOutline} variant="ghost" size="sm" className="shrink-0">
                     <Copy className="mr-2 h-4 w-4" />
                     Copy
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <pre className="text-sm bg-muted p-4 rounded-lg whitespace-pre-wrap max-h-[400px] overflow-y-auto">
+                <pre className="text-xs sm:text-sm bg-muted p-3 sm:p-4 rounded-lg whitespace-pre-wrap max-h-[300px] sm:max-h-[400px] overflow-y-auto break-words">
                   {result.new_page_outline}
                 </pre>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="min-w-0">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Rationale</CardTitle>
-                  <Button onClick={handleCopyRationale} variant="ghost" size="sm">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="truncate">Rationale</CardTitle>
+                  <Button onClick={handleCopyRationale} variant="ghost" size="sm" className="shrink-0">
                     <Copy className="mr-2 h-4 w-4" />
                     Copy
                   </Button>
@@ -374,7 +374,7 @@ export default function PageRewriter() {
               <CardContent className="space-y-4">
                 <div>
                   <h3 className="text-sm font-semibold mb-2">GEO Rationale</h3>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+                  <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap max-h-[150px] sm:max-h-[200px] overflow-y-auto break-words">
                     {result.geo_rationale}
                   </p>
                 </div>
@@ -384,7 +384,7 @@ export default function PageRewriter() {
                     <Separator />
                     <div>
                       <h3 className="text-sm font-semibold mb-2">Persona Rationale</h3>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+                      <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap max-h-[150px] sm:max-h-[200px] overflow-y-auto break-words">
                         {result.persona_rationale}
                       </p>
                     </div>

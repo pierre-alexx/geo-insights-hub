@@ -110,10 +110,10 @@ export default function Results() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Test Results</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Test Results</h1>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1">
           View and analyze all GEO test results
         </p>
       </div>
