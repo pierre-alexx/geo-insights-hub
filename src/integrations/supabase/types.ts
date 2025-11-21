@@ -100,6 +100,44 @@ export type Database = {
           },
         ]
       }
+      rewrites: {
+        Row: {
+          geo_rationale: string
+          id: string
+          original_html: string
+          page_id: string
+          rewritten_html: string
+          summary: string
+          timestamp: string | null
+        }
+        Insert: {
+          geo_rationale: string
+          id?: string
+          original_html: string
+          page_id: string
+          rewritten_html: string
+          summary: string
+          timestamp?: string | null
+        }
+        Update: {
+          geo_rationale?: string
+          id?: string
+          original_html?: string
+          page_id?: string
+          rewritten_html?: string
+          summary?: string
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rewrites_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

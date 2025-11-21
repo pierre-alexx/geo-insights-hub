@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.crawl-refresh]
 verify_jwt = false
+
+[functions.rewrite-page]
+verify_jwt = false

@@ -460,3 +460,108 @@ export async function fetchSiteTree(): Promise<TreeNode[]> {
     return [];
   }
 }
+
+export interface Rewrite {
+  id: string;
+  pageId: string;
+  originalHtml: string;
+  rewrittenHtml: string;
+  summary: string;
+  geoRationale: string;
+  timestamp: string;
+}
+
+export async function rewritePage(pageId: string): Promise<Rewrite> {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/rewrite-page`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ pageId })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to rewrite page');
+  }
+
+  return await response.json();
+}
+
+export async function fetchRewrites(pageId: string): Promise<Rewrite[]> {
+  try {
+    const { data, error } = await supabase
+      .from('rewrites')
+      .select('*')
+      .eq('page_id', pageId)
+      .order('timestamp', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map((r: any) => ({
+      id: r.id,
+      pageId: r.page_id,
+      originalHtml: r.original_html,
+      rewrittenHtml: r.rewritten_html,
+      summary: r.summary,
+      geoRationale: r.geo_rationale,
+      timestamp: r.timestamp
+    }));
+  } catch (error) {
+    console.error('Error fetching rewrites:', error);
+    return [];
+  }
+}
+
+export async function fetchRewrite(id: string): Promise<Rewrite | null> {
+  try {
+    const { data, error } = await supabase
+      .from('rewrites')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    return {
+      id: data.id,
+      pageId: data.page_id,
+      originalHtml: data.original_html,
+      rewrittenHtml: data.rewritten_html,
+      summary: data.summary,
+      geoRationale: data.geo_rationale,
+      timestamp: data.timestamp
+    };
+  } catch (error) {
+    console.error('Error fetching rewrite:', error);
+    return null;
+  }
+}
+
+export async function fetchRewriteStats() {
+  try {
+    const [pagesData, rewritesData] = await Promise.all([
+      supabase.from('pages').select('id'),
+      supabase.from('rewrites').select('page_id, id')
+    ]);
+
+    const totalPages = pagesData.data?.length || 0;
+    const rewrittenPageIds = new Set(rewritesData.data?.map((r: any) => r.page_id) || []);
+    const rewrittenPages = rewrittenPageIds.size;
+
+    return {
+      totalPages,
+      rewrittenPages,
+      percentageRewritten: totalPages > 0 ? (rewrittenPages / totalPages) * 100 : 0
+    };
+  } catch (error) {
+    console.error('Error fetching rewrite stats:', error);
+    return {
+      totalPages: 0,
+      rewrittenPages: 0,
+      percentageRewritten: 0
+    };
+  }
+}

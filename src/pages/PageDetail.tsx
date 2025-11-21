@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { fetchPageById, fetchPageResults, GeoResult } from "@/services/geoService";
+import { fetchPageById, fetchPageResults, rewritePage, fetchRewrites, type GeoResult, type Rewrite } from "@/services/geoService";
 import { Loader } from "@/components/Loader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, ExternalLink, Wand2, Loader2 } from "lucide-react";
 import { GeoResultModal } from "@/components/GeoResultModal";
+import { toast } from "sonner";
 
 export default function PageDetail() {
   const { pageId } = useParams();
@@ -16,17 +18,24 @@ export default function PageDetail() {
   const [results, setResults] = useState<GeoResult[]>([]);
   const [selectedResult, setSelectedResult] = useState<GeoResult | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [rewriteModalOpen, setRewriteModalOpen] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
+  const [latestRewrite, setLatestRewrite] = useState<Rewrite | null>(null);
 
   useEffect(() => {
     async function loadData() {
       if (!pageId) return;
       setLoading(true);
-      const [pageData, resultsData] = await Promise.all([
+      const [pageData, resultsData, rewritesData] = await Promise.all([
         fetchPageById(pageId),
-        fetchPageResults(pageId)
+        fetchPageResults(pageId),
+        fetchRewrites(pageId)
       ]);
       setPage(pageData);
       setResults(resultsData);
+      if (rewritesData.length > 0) {
+        setLatestRewrite(rewritesData[0]);
+      }
       setLoading(false);
     }
     loadData();
@@ -55,6 +64,22 @@ export default function PageDetail() {
   const handleViewDetails = (result: GeoResult) => {
     setSelectedResult(result);
     setModalOpen(true);
+  };
+
+  const handleRewrite = async () => {
+    if (!pageId) return;
+    
+    setRewriting(true);
+    try {
+      const result = await rewritePage(pageId);
+      setLatestRewrite(result);
+      toast.success("Page rewritten successfully");
+    } catch (error) {
+      console.error("Rewrite failed:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to rewrite page");
+    } finally {
+      setRewriting(false);
+    }
   };
 
   return (
@@ -101,6 +126,40 @@ export default function PageDetail() {
             <p className="text-xs text-muted-foreground mt-1">
               Based on {results.length} test{results.length !== 1 ? 's' : ''}
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-foreground">AI Page Rewriter</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Optimize this page for better LLM understanding and recall
+          </p>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleRewrite} disabled={rewriting}>
+              {rewriting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Rewriting...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  Rewrite this Page (AI)
+                </>
+              )}
+            </Button>
+            {latestRewrite && (
+              <>
+                <Badge variant="secondary">Latest rewrite available</Badge>
+                <Button variant="outline" size="sm" onClick={() => setRewriteModalOpen(true)}>
+                  View Rewrite
+                </Button>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -173,6 +232,45 @@ export default function PageDetail() {
         open={modalOpen}
         onOpenChange={setModalOpen}
       />
+
+      <Dialog open={rewriteModalOpen} onOpenChange={setRewriteModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>AI Page Rewrite</DialogTitle>
+            <DialogDescription>
+              LLM-optimized version of this page
+            </DialogDescription>
+          </DialogHeader>
+          {latestRewrite && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Summary</h4>
+                <p className="text-sm text-muted-foreground">{latestRewrite.summary}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold mb-2">GEO Rationale</h4>
+                <p className="text-sm text-muted-foreground">{latestRewrite.geoRationale}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Rewritten HTML</h4>
+                <div className="bg-muted rounded-lg p-4 max-h-96 overflow-auto">
+                  <pre className="text-xs">
+                    <code>{latestRewrite.rewrittenHtml}</code>
+                  </pre>
+                </div>
+              </div>
+              <div className="flex justify-between items-center pt-4 border-t">
+                <p className="text-xs text-muted-foreground">
+                  Generated: {new Date(latestRewrite.timestamp).toLocaleString()}
+                </p>
+                <Button onClick={() => navigate("/rewriter")} variant="outline">
+                  Open in Rewriter
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

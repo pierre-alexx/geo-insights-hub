@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchPageStats, fetchPages, fetchCoverageStats, fetchSiteTree } from "@/services/geoService";
+import { fetchPageStats, fetchPages, fetchCoverageStats, fetchSiteTree, fetchRewriteStats } from "@/services/geoService";
 import { ScoreCard } from "@/components/ScoreCard";
 import { SiteTreeView } from "@/components/SiteTreeView";
 import { Loader } from "@/components/Loader";
-import { Activity, TrendingUp, Eye, ThumbsUp, Award, Globe, Clock, Layers } from "lucide-react";
+import { Activity, TrendingUp, Eye, ThumbsUp, Award, Globe, Clock, Layers, Wand2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,20 +18,23 @@ export default function Dashboard() {
   const [pages, setPages] = useState<any[]>([]);
   const [coverage, setCoverage] = useState<any>(null);
   const [siteTree, setSiteTree] = useState<any[]>([]);
+  const [rewriteStats, setRewriteStats] = useState<any>(null);
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [statsData, pagesData, coverageData, treeData] = await Promise.all([
+      const [statsData, pagesData, coverageData, treeData, rewriteData] = await Promise.all([
         fetchPageStats(),
         fetchPages(),
         fetchCoverageStats(),
-        fetchSiteTree()
+        fetchSiteTree(),
+        fetchRewriteStats()
       ]);
       setStats(statsData);
       setPages(pagesData);
       setCoverage(coverageData);
       setSiteTree(treeData);
+      setRewriteStats(rewriteData);
       setLoading(false);
     }
     loadData();
@@ -146,6 +149,43 @@ export default function Dashboard() {
                 <p className="text-sm text-muted-foreground">Avg GEO Score</p>
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-foreground">Rewrite Coverage</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex items-center gap-3">
+              <Wand2 className="h-8 w-8 text-primary" />
+              <div>
+                <p className="text-2xl font-bold">{rewriteStats.rewrittenPages}</p>
+                <p className="text-sm text-muted-foreground">Pages Rewritten</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Globe className="h-8 w-8 text-muted-foreground" />
+              <div>
+                <p className="text-2xl font-bold">{rewriteStats.totalPages}</p>
+                <p className="text-sm text-muted-foreground">Total Pages</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Award className="h-8 w-8 text-primary" />
+              <div>
+                <p className="text-2xl font-bold">{Math.round(rewriteStats.percentageRewritten)}%</p>
+                <p className="text-sm text-muted-foreground">Coverage</p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4">
+            <Button onClick={() => navigate("/rewriter")} variant="outline">
+              <Wand2 className="mr-2 h-4 w-4" />
+              Open Rewriter
+            </Button>
           </div>
         </CardContent>
       </Card>
