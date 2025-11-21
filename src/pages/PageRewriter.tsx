@@ -231,38 +231,50 @@ export default function PageRewriter() {
                     <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
                       <Badge variant="outline">Original</Badge>
                     </h4>
-                    <div className="bg-muted rounded-lg p-4 h-[600px] overflow-auto">
-                      <pre className="text-xs">
-                        <code>{selectedPage.html_content}</code>
-                      </pre>
+                    <div className="border rounded-lg overflow-hidden bg-white">
+                      <iframe
+                        srcDoc={selectedPage.html_content || ''}
+                        className="w-full h-[600px] border-0"
+                        title="Original HTML"
+                        sandbox="allow-same-origin"
+                      />
                     </div>
                   </div>
                   <div>
                     <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
                       <Badge variant="default">Rewritten</Badge>
                     </h4>
-                    <div className="bg-muted rounded-lg p-4 h-[600px] overflow-auto">
-                      <pre className="text-xs">
-                        <code>{latestRewrite.rewrittenHtml}</code>
-                      </pre>
+                    <div className="border rounded-lg overflow-hidden bg-white">
+                      <iframe
+                        srcDoc={latestRewrite.rewrittenHtml}
+                        className="w-full h-[600px] border-0"
+                        title="Rewritten HTML"
+                        sandbox="allow-same-origin"
+                      />
                     </div>
                   </div>
                 </div>
               </TabsContent>
 
               <TabsContent value="original">
-                <div className="bg-muted rounded-lg p-4 max-h-[600px] overflow-auto">
-                  <pre className="text-xs">
-                    <code>{selectedPage.html_content}</code>
-                  </pre>
+                <div className="border rounded-lg overflow-hidden bg-white">
+                  <iframe
+                    srcDoc={selectedPage.html_content || ''}
+                    className="w-full h-[600px] border-0"
+                    title="Original HTML Full"
+                    sandbox="allow-same-origin"
+                  />
                 </div>
               </TabsContent>
 
               <TabsContent value="rewritten">
-                <div className="bg-muted rounded-lg p-4 max-h-[600px] overflow-auto">
-                  <pre className="text-xs">
-                    <code>{latestRewrite.rewrittenHtml}</code>
-                  </pre>
+                <div className="border rounded-lg overflow-hidden bg-white">
+                  <iframe
+                    srcDoc={latestRewrite.rewrittenHtml}
+                    className="w-full h-[600px] border-0"
+                    title="Rewritten HTML Full"
+                    sandbox="allow-same-origin"
+                  />
                 </div>
               </TabsContent>
             </Tabs>
