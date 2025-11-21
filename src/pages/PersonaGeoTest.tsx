@@ -1,26 +1,38 @@
 import { useState, useEffect } from "react";
-import { fetchPages, fetchPersonas, runPersonaGeoTest, type Page, type Persona } from "@/services/geoService";
+import { fetchPages, fetchPersonas, runPersonaGeoTest, fetchPage, createPageManually, type Page, type Persona } from "@/services/geoService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, User, Target, TrendingUp, AlertCircle, CheckCircle2, Lightbulb } from "lucide-react";
+import { Loader2, User, Target, TrendingUp, AlertCircle, CheckCircle2, Lightbulb, Download, FileText } from "lucide-react";
 
 export default function PersonaGeoTest() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [pages, setPages] = useState<Page[]>([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
-  const [selectedPageId, setSelectedPageId] = useState<string>("");
+  const [selectedPage, setSelectedPage] = useState<Page | null>(null);
   const [numQuestions, setNumQuestions] = useState<number>(5);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [selectedResult, setSelectedResult] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+
+  // For URL input
+  const [url, setUrl] = useState("");
+  const [fetchingPage, setFetchingPage] = useState(false);
+
+  // For manual input
+  const [manualUrl, setManualUrl] = useState("");
+  const [manualTitle, setManualTitle] = useState("");
+  const [manualHtml, setManualHtml] = useState("");
+  const [creatingManually, setCreatingManually] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -39,18 +51,62 @@ export default function PersonaGeoTest() {
     }
   };
 
+  const handleFetchPage = async () => {
+    if (!url.trim()) {
+      toast.error("Please enter a URL");
+      return;
+    }
+
+    setFetchingPage(true);
+    try {
+      const fetchedPage = await fetchPage(url);
+      setSelectedPage(fetchedPage);
+      toast.success("Page fetched successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to fetch page");
+      console.error(error);
+    } finally {
+      setFetchingPage(false);
+    }
+  };
+
+  const handleCreateManually = async () => {
+    if (!manualUrl.trim() || !manualTitle.trim() || !manualHtml.trim()) {
+      toast.error("Please fill in all fields (URL, Title, and HTML)");
+      return;
+    }
+
+    setCreatingManually(true);
+    try {
+      const createdPage = await createPageManually(manualUrl, manualTitle, manualHtml);
+      setSelectedPage(createdPage);
+      toast.success("Page created successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create page");
+      console.error(error);
+    } finally {
+      setCreatingManually(false);
+    }
+  };
+
+  const handleSelectExistingPage = (pageId: string) => {
+    const page = pages.find(p => p.id === pageId);
+    if (page) {
+      setSelectedPage(page);
+    }
+  };
+
   const selectedPersona = personas.find(p => p.id === selectedPersonaId);
-  const selectedPage = pages.find(p => p.id === selectedPageId);
 
   const handleRunTest = async () => {
-    if (!selectedPersonaId || !selectedPageId) {
+    if (!selectedPersonaId || !selectedPage) {
       toast.error("Please select both a persona and a page");
       return;
     }
 
     setLoading(true);
     try {
-      const result = await runPersonaGeoTest(selectedPersonaId, selectedPageId, numQuestions);
+      const result = await runPersonaGeoTest(selectedPersonaId, selectedPage.id, numQuestions);
       setResults(result);
       toast.success("Persona GEO test completed!");
     } catch (error) {
@@ -111,22 +167,114 @@ export default function PersonaGeoTest() {
 
             <div className="space-y-2">
               <Label>Select Page</Label>
-              <Select value={selectedPageId} onValueChange={setSelectedPageId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a page" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pages.map((page) => (
-                    <SelectItem key={page.id} value={page.id}>
-                      {page.title} - {page.url}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Tabs defaultValue="fetch">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="fetch">Fetch URL</TabsTrigger>
+                  <TabsTrigger value="existing">Existing Pages</TabsTrigger>
+                  <TabsTrigger value="manual">Manual Input</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="fetch" className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="url">BNP Paribas Page URL</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="url"
+                        placeholder="https://www.bnpparibas.com/..."
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        disabled={fetchingPage || selectedPage !== null}
+                      />
+                      <Button 
+                        onClick={handleFetchPage} 
+                        disabled={fetchingPage || !url.trim() || selectedPage !== null}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Fetch
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="existing" className="space-y-4 mt-4">
+                  <Select value={selectedPage?.id || ""} onValueChange={handleSelectExistingPage} disabled={selectedPage !== null}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose an existing page" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pages.map((page) => (
+                        <SelectItem key={page.id} value={page.id}>
+                          {page.title} - {page.url}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TabsContent>
+
+                <TabsContent value="manual" className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-url">Page URL</Label>
+                    <Input
+                      id="manual-url"
+                      placeholder="https://group.bnpparibas/..."
+                      value={manualUrl}
+                      onChange={(e) => setManualUrl(e.target.value)}
+                      disabled={creatingManually || selectedPage !== null}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-title">Page Title</Label>
+                    <Input
+                      id="manual-title"
+                      placeholder="Enter page title"
+                      value={manualTitle}
+                      onChange={(e) => setManualTitle(e.target.value)}
+                      disabled={creatingManually || selectedPage !== null}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-html">HTML Content</Label>
+                    <Textarea
+                      id="manual-html"
+                      placeholder="Paste the full HTML content here..."
+                      value={manualHtml}
+                      onChange={(e) => setManualHtml(e.target.value)}
+                      rows={6}
+                      className="font-mono text-xs"
+                      disabled={creatingManually || selectedPage !== null}
+                    />
+                  </div>
+
+                  <Button 
+                    onClick={handleCreateManually} 
+                    disabled={creatingManually || !manualUrl.trim() || !manualTitle.trim() || !manualHtml.trim() || selectedPage !== null}
+                    className="w-full"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Create Page from Manual Input
+                  </Button>
+                </TabsContent>
+              </Tabs>
+
               {selectedPage && (
-                <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
+                <div className="p-3 bg-muted rounded-lg text-sm space-y-1 mt-4">
+                  <p><strong>Selected:</strong> {selectedPage.title}</p>
                   <p><strong>URL:</strong> {selectedPage.url}</p>
-                  <p><strong>Last fetched:</strong> {new Date(selectedPage.fetch_timestamp).toLocaleString()}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedPage(null);
+                      setUrl("");
+                      setManualUrl("");
+                      setManualTitle("");
+                      setManualHtml("");
+                    }}
+                  >
+                    Change Page
+                  </Button>
                 </div>
               )}
             </div>
@@ -143,7 +291,7 @@ export default function PersonaGeoTest() {
             />
           </div>
 
-          <Button onClick={handleRunTest} disabled={loading || !selectedPersonaId || !selectedPageId} className="w-full">
+          <Button onClick={handleRunTest} disabled={loading || !selectedPersonaId || !selectedPage} className="w-full">
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
