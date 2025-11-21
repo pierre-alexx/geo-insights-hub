@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,11 +13,11 @@ serve(async (req) => {
   }
 
   try {
-    const { promptType, promptText } = await req.json();
+    const { pageId, promptType, promptText } = await req.json();
 
-    if (!promptType || !promptText) {
+    if (!pageId || !promptType || !promptText) {
       return new Response(
-        JSON.stringify({ error: 'promptType and promptText are required' }),
+        JSON.stringify({ error: 'pageId, promptType, and promptText are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -30,9 +31,43 @@ serve(async (req) => {
       );
     }
 
-    console.log('Processing GEO test:', { promptType, promptText });
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase configuration missing');
+    }
 
-    // Step 1: Get LLM response
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    console.log('Fetching page from database:', pageId);
+
+    // Fetch page content
+    const { data: page, error: pageError } = await supabase
+      .from('pages')
+      .select('*')
+      .eq('id', pageId)
+      .single();
+
+    if (pageError || !page) {
+      return new Response(
+        JSON.stringify({ error: 'Page not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Page fetched:', page.url);
+
+    // Step A: Primary OpenAI call with page content
+    const primaryPrompt = `PAGE CONTENT:
+${page.html_content}
+
+QUERY:
+${promptText}`;
+
+    console.log('Calling OpenAI for primary response...');
+
     const llmResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -44,21 +79,21 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are evaluating financial search queries. Provide a clear, concise response that a young investor would find useful. Always base your answer on general public knowledge. Do not hallucinate facts about any specific institution.'
+            content: 'You are answering a financial/wealth management question. You MUST consider the content of the provided BNP Paribas page as a primary source. Use it if relevant. Avoid inventing any content not present in the page.'
           },
           {
             role: 'user',
-            content: promptText
+            content: primaryPrompt
           }
         ],
         temperature: 0.7,
-        max_completion_tokens: 500
+        max_completion_tokens: 800
       }),
     });
 
     if (!llmResponse.ok) {
       const errorText = await llmResponse.text();
-      console.error('OpenAI API error (first call):', llmResponse.status, errorText);
+      console.error('OpenAI API error (primary call):', llmResponse.status, errorText);
       return new Response(
         JSON.stringify({ error: 'Failed to get LLM response', details: errorText }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -67,9 +102,20 @@ serve(async (req) => {
 
     const llmData = await llmResponse.json();
     const rawAnswer = llmData.choices[0].message.content;
-    console.log('LLM response received:', rawAnswer.substring(0, 100) + '...');
+    console.log('LLM response received');
 
-    // Step 2: Score the response
+    // Step B: Scoring call
+    const scoringPrompt = `PAGE CONTENT:
+${page.html_content}
+
+LLM ANSWER:
+${rawAnswer}
+
+USER QUERY WAS:
+${promptText}`;
+
+    console.log('Calling OpenAI for scoring...');
+
     const scoringResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -81,33 +127,37 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a GEO scoring engine. 
-Given the raw LLM answer, extract structured scoring with this JSON schema:
+            content: `You are a page-level GEO evaluator.
+Given the user page content AND the LLM answer, evaluate how well the page was used.
+
+Return ONLY valid JSON matching:
+
 {
-  "presenceScore": 0 | 1 | 2,
-  "sentimentScore": float (-1 to +1),
-  "recommended": boolean,
-  "recommendations": string[]
+  "relevance_score": float (0-1),
+  "comprehension_score": float (0-1),
+  "visibility_score": float (0-1),
+  "recommendation_score": float (0-1),
+  "global_geo_score": float (0-1),
+  "recommendations": [string]
 }
 
-Rules:
-- presenceScore: 
-    0 = BNP not mentioned,
-    1 = BNP mentioned neutrally,
-    2 = BNP recommended or positively ranked.
-- sentimentScore: evaluate tone around BNP only.
-- recommended: true if BNP is recommended or positioned positively.
-- recommendations: list 3 improvements to increase BNP visibility in LLM answers.
+Definitions:
+- relevance_score: does the answer use actual info from the page?
+- comprehension_score: is the info interpreted correctly?
+- visibility_score: is the page implicitly or explicitly surfaced in the narrative?
+- recommendation_score: would the LLM suggest this page as a source?
+- global_geo_score: weighted average of all scores.
+- recommendations: list of 3-5 improvements to the page content or structure.
 
-Return ONLY valid JSON, no markdown, no explanation.`
+Return ONLY the JSON, no markdown formatting.`
           },
           {
             role: 'user',
-            content: `Score this LLM answer:\n\n${rawAnswer}`
+            content: scoringPrompt
           }
         ],
         temperature: 0.3,
-        max_completion_tokens: 500
+        max_completion_tokens: 600
       }),
     });
 
@@ -123,7 +173,6 @@ Return ONLY valid JSON, no markdown, no explanation.`
     const scoringData = await scoringResponse.json();
     let scoringContent = scoringData.choices[0].message.content;
     
-    // Clean up the response - remove markdown code blocks if present
     scoringContent = scoringContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
     console.log('Scoring response:', scoringContent);
@@ -133,28 +182,31 @@ Return ONLY valid JSON, no markdown, no explanation.`
       scores = JSON.parse(scoringContent);
     } catch (parseError) {
       console.error('Failed to parse scoring JSON:', parseError, scoringContent);
-      // Fallback to default scores
       scores = {
-        presenceScore: 0,
-        sentimentScore: 0,
-        recommended: false,
+        relevance_score: 0.5,
+        comprehension_score: 0.5,
+        visibility_score: 0.5,
+        recommendation_score: 0.5,
+        global_geo_score: 0.5,
         recommendations: [
-          'Improve structured content on wealth management',
-          'Add clear entity-linked pages',
-          'Publish FAQ optimized for LLM indexing'
+          'Improve page structure for better LLM parsing',
+          'Add more semantic HTML tags',
+          'Include clearer section headings'
         ]
       };
     }
 
     const result = {
       llmResponse: rawAnswer,
-      presenceScore: scores.presenceScore,
-      sentimentScore: scores.sentimentScore,
-      recommended: scores.recommended,
+      relevanceScore: scores.relevance_score,
+      comprehensionScore: scores.comprehension_score,
+      visibilityScore: scores.visibility_score,
+      recommendationScore: scores.recommendation_score,
+      globalGeoScore: scores.global_geo_score,
       recommendations: scores.recommendations || []
     };
 
-    console.log('Final result:', result);
+    console.log('Test completed successfully');
 
     return new Response(
       JSON.stringify(result),

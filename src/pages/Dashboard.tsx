@@ -1,26 +1,29 @@
 import { useEffect, useState } from "react";
-import { fetchStats, fetchAllResults, GeoResult } from "@/services/geoService";
+import { useNavigate } from "react-router-dom";
+import { fetchPageStats, fetchPages } from "@/services/geoService";
 import { ScoreCard } from "@/components/ScoreCard";
-import { ChartPresenceByType } from "@/components/ChartPresenceByType";
 import { Loader } from "@/components/Loader";
-import { Activity, TrendingUp, ThumbsUp, Award } from "lucide-react";
+import { Activity, TrendingUp, Eye, ThumbsUp, Award } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
-  const [recentResults, setRecentResults] = useState<GeoResult[]>([]);
+  const [pages, setPages] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [statsData, allResults] = await Promise.all([
-        fetchStats(),
-        fetchAllResults()
+      const [statsData, pagesData] = await Promise.all([
+        fetchPageStats(),
+        fetchPages()
       ]);
       setStats(statsData);
-      setRecentResults(allResults.slice(0, 10));
+      setPages(pagesData);
       setLoading(false);
     }
     loadData();
@@ -30,24 +33,30 @@ export default function Dashboard() {
     return <Loader text="Loading dashboard..." />;
   }
 
+  const formatScore = (score: number) => `${Math.round(score * 100)}%`;
+
+  const chartData = stats.geoScoreByPage.slice(0, 10).map((page: any) => ({
+    name: page.title.length > 30 ? page.title.substring(0, 30) + '...' : page.title,
+    score: Math.round(page.avgScore * 100)
+  }));
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">GEO Dashboard</h1>
+        <h1 className="text-3xl font-bold text-foreground">Page GEO Dashboard</h1>
         <p className="text-muted-foreground mt-1">
-          Monitor BNP Paribas presence in LLM responses
+          Monitor BNP Paribas page performance in LLM responses
         </p>
       </div>
 
-      {/* GEO Visibility Score - Hero Card */}
       <Card className="bg-gradient-to-br from-primary to-accent text-primary-foreground border-0">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm opacity-90 mb-1">GEO Visibility Score</p>
-              <div className="text-5xl font-bold">{stats.geoVisibilityScore}</div>
+              <p className="text-sm opacity-90 mb-1">Average Global GEO Score</p>
+              <div className="text-5xl font-bold">{formatScore(stats.avgGlobalGeoScore)}</div>
               <p className="text-sm opacity-75 mt-2">
-                Computed from {recentResults.length} test results
+                Across {pages.length} pages
               </p>
             </div>
             <Award className="h-20 w-20 opacity-20" />
@@ -55,89 +64,127 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <ScoreCard
-          title="Average Presence Score"
-          value={stats.avgPresenceScore.toFixed(2)}
+          title="Average Relevance"
+          value={formatScore(stats.avgRelevance)}
           icon={Activity}
-          description="Scale: 0 (absent) to 2 (prominent)"
+          description="Does the LLM use page info?"
         />
         <ScoreCard
-          title="Average Sentiment"
-          value={stats.avgSentiment > 0 ? `+${stats.avgSentiment.toFixed(2)}` : stats.avgSentiment.toFixed(2)}
+          title="Average Comprehension"
+          value={formatScore(stats.avgComprehension)}
           icon={TrendingUp}
-          description="Scale: -1 (negative) to +1 (positive)"
+          description="Is the content understood?"
         />
         <ScoreCard
-          title="Recommendation Rate"
-          value={`${stats.recommendationRate.toFixed(0)}%`}
+          title="Average Visibility"
+          value={formatScore(stats.avgVisibility)}
+          icon={Eye}
+          description="Is the page cited?"
+        />
+        <ScoreCard
+          title="Average Recommendation"
+          value={formatScore(stats.avgRecommendation)}
           icon={ThumbsUp}
-          description="% tests where BNP was recommended"
+          description="Would the LLM recommend it?"
         />
       </div>
 
-      {/* Chart */}
-      {Object.keys(stats.presenceByType).length > 0 ? (
-        <ChartPresenceByType data={stats.presenceByType} />
+      {chartData.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-foreground">GEO Score by Page (Top 10)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis 
+                  dataKey="name" 
+                  className="text-xs text-muted-foreground"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
+                />
+                <YAxis 
+                  className="text-xs text-muted-foreground"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  domain={[0, 100]}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))', 
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '0.5rem'
+                  }}
+                />
+                <Bar dataKey="score" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-foreground">Presence by Query Type</CardTitle>
+            <CardTitle className="text-foreground">GEO Score by Page</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-muted-foreground py-8">
-              No data available yet. Run some GEO tests to see results here.
+              No data available yet. Run some page GEO tests to see results here.
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Recent Results */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-foreground">Recent Test Results</CardTitle>
+          <CardTitle className="text-foreground">All Pages</CardTitle>
         </CardHeader>
         <CardContent>
-          {recentResults.length > 0 ? (
+          {pages.length > 0 ? (
             <div className="space-y-3">
-              {recentResults.map((result) => (
-                <div
-                  key={result.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="shrink-0">
-                        {result.promptType}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(result.timestamp).toLocaleString()}
-                      </span>
+              {pages.map((page) => {
+                const pageStats = stats.geoScoreByPage.find((p: any) => p.pageId === page.id);
+                return (
+                  <div
+                    key={page.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/page/${page.id}`)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {page.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate mt-1">
+                        {page.url}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Last fetched: {new Date(page.fetch_timestamp).toLocaleString()}
+                      </p>
                     </div>
-                    <p className="text-sm text-foreground truncate">
-                      {result.promptText}
-                    </p>
+                    <div className="ml-4 shrink-0">
+                      {pageStats ? (
+                        <div className="text-right">
+                          <Badge variant="default" className="mb-1">
+                            {formatScore(pageStats.avgScore)}
+                          </Badge>
+                          <p className="text-xs text-muted-foreground">
+                            {pageStats.testCount} test{pageStats.testCount !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      ) : (
+                        <Badge variant="secondary">No tests</Badge>
+                      )}
+                    </div>
                   </div>
-                  <div className="ml-4 shrink-0">
-                    <Badge 
-                      variant={
-                        result.presenceScore === 2 
-                          ? "default" 
-                          : result.presenceScore === 1 
-                          ? "secondary" 
-                          : "destructive"
-                      }
-                    >
-                      Score: {result.presenceScore}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-8">
-              No results yet. Run your first GEO test to get started.
+              No pages yet. Fetch your first page to get started.
             </p>
           )}
         </CardContent>
