@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader } from "@/components/Loader";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { PlayCircle, ExternalLink } from "lucide-react";
+import { PlayCircle, ExternalLink, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 const promptTypes = [
@@ -45,8 +45,8 @@ export default function RunTest() {
       const testResult = await runGeoTest(promptType, promptText);
       setResult(testResult);
       toast.success("GEO test completed and saved successfully");
-    } catch (error) {
-      toast.error("Failed to run GEO test");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to run GEO test");
       console.error(error);
     } finally {
       setLoading(false);
@@ -57,6 +57,13 @@ export default function RunTest() {
     setPromptType("");
     setPromptText("");
     setResult(null);
+  };
+
+  const handleCopyAnswer = () => {
+    if (result) {
+      navigator.clipboard.writeText(result.llmResponse);
+      toast.success("Answer copied to clipboard");
+    }
   };
 
   const getPresenceLabel = (score: number) => {
@@ -80,7 +87,6 @@ export default function RunTest() {
         </p>
       </div>
 
-      {/* Test Form */}
       <Card>
         <CardHeader>
           <CardTitle className="text-foreground">Configure Test</CardTitle>
@@ -129,16 +135,14 @@ export default function RunTest() {
         </CardContent>
       </Card>
 
-      {/* Loading State */}
       {loading && (
         <Card>
           <CardContent className="py-12">
-            <Loader text="Running GEO test... Analyzing LLM response..." />
+            <Loader text="Running GEO test... This may take 10-20 seconds..." />
           </CardContent>
         </Card>
       )}
 
-      {/* Result Card */}
       {result && !loading && (
         <Card>
           <CardHeader>
@@ -157,8 +161,14 @@ export default function RunTest() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <h3 className="text-sm font-semibold mb-2 text-foreground">LLM Raw Answer</h3>
-              <div className="bg-muted p-4 rounded-md text-sm text-muted-foreground">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-foreground">LLM Raw Answer</h3>
+                <Button onClick={handleCopyAnswer} variant="ghost" size="sm">
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy
+                </Button>
+              </div>
+              <div className="bg-muted p-4 rounded-md text-sm text-muted-foreground max-h-60 overflow-y-auto">
                 {result.llmResponse}
               </div>
             </div>
