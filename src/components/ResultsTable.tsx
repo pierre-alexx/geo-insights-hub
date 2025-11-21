@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GeoResult } from "@/services/geoService";
+import { GeoResult, PersonaResult } from "@/services/geoService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,21 +14,30 @@ import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 
 interface ResultsTableProps {
-  results: GeoResult[];
-  onViewDetails: (result: GeoResult) => void;
+  results: (GeoResult | PersonaResult)[];
+  onViewDetails: (result: GeoResult | PersonaResult) => void;
+  type: "general" | "persona";
 }
 
-export function ResultsTable({ results, onViewDetails }: ResultsTableProps) {
+export function ResultsTable({ results, onViewDetails, type }: ResultsTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<keyof GeoResult>("timestamp");
+  const [sortBy, setSortBy] = useState<string>("timestamp");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  const filteredResults = results.filter(
-    (r) =>
-      r.promptText.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.promptType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.pageUrl.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredResults = results.filter((r) => {
+    const searchLower = searchTerm.toLowerCase();
+    if (type === "general") {
+      const gr = r as GeoResult;
+      return (
+        gr.promptText.toLowerCase().includes(searchLower) ||
+        gr.promptType.toLowerCase().includes(searchLower) ||
+        gr.pageUrl.toLowerCase().includes(searchLower)
+      );
+    } else {
+      const pr = r as PersonaResult;
+      return pr.prompt.toLowerCase().includes(searchLower);
+    }
+  });
 
   const sortedResults = [...filteredResults].sort((a, b) => {
     if (sortBy === "timestamp") {
@@ -37,9 +46,9 @@ export function ResultsTable({ results, onViewDetails }: ResultsTableProps) {
         : new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     }
     if (sortBy === "globalGeoScore") {
-      return sortOrder === "asc"
-        ? a.globalGeoScore - b.globalGeoScore
-        : b.globalGeoScore - a.globalGeoScore;
+      const aScore = type === "general" ? (a as GeoResult).globalGeoScore : (a as PersonaResult).global_geo_score;
+      const bScore = type === "general" ? (b as GeoResult).globalGeoScore : (b as PersonaResult).global_geo_score;
+      return sortOrder === "asc" ? aScore - bScore : bScore - aScore;
     }
     return 0;
   });
@@ -118,34 +127,54 @@ export function ResultsTable({ results, onViewDetails }: ResultsTableProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              sortedResults.map((result) => (
-                <TableRow key={result.id}>
-                  <TableCell className="max-w-xs">
-                    <p className="text-sm font-medium truncate">{result.pageTitle}</p>
-                    <p className="text-xs text-muted-foreground truncate">{result.pageUrl}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{result.promptType}</Badge>
-                  </TableCell>
-                  <TableCell>{getScoreBadge(result.globalGeoScore)}</TableCell>
-                  <TableCell className="hidden md:table-cell">{formatScore(result.relevanceScore)}</TableCell>
-                  <TableCell className="hidden md:table-cell">{formatScore(result.comprehensionScore)}</TableCell>
-                  <TableCell className="hidden lg:table-cell">{formatScore(result.visibilityScore)}</TableCell>
-                  <TableCell className="hidden lg:table-cell">{formatScore(result.recommendationScore)}</TableCell>
-                  <TableCell className="text-xs">
-                    {new Date(result.timestamp).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onViewDetails(result)}
-                    >
-                      Details
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+              sortedResults.map((result) => {
+                const isGeneral = type === "general";
+                const gr = result as GeoResult;
+                const pr = result as PersonaResult;
+                
+                return (
+                  <TableRow key={result.id}>
+                    <TableCell className="max-w-xs">
+                      {isGeneral ? (
+                        <>
+                          <p className="text-sm font-medium truncate">{gr.pageTitle}</p>
+                          <p className="text-xs text-muted-foreground truncate">{gr.pageUrl}</p>
+                        </>
+                      ) : (
+                        <p className="text-sm truncate">{pr.prompt}</p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{isGeneral ? gr.promptType : "Persona"}</Badge>
+                    </TableCell>
+                    <TableCell>{getScoreBadge(isGeneral ? gr.globalGeoScore : pr.global_geo_score)}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {formatScore(isGeneral ? gr.relevanceScore : pr.relevance_score)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {formatScore(isGeneral ? gr.comprehensionScore : pr.comprehension_score)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {formatScore(isGeneral ? gr.visibilityScore : pr.visibility_score)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {formatScore(isGeneral ? gr.recommendationScore : pr.recommendation_score)}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {new Date(result.timestamp).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onViewDetails(result)}
+                      >
+                        Details
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

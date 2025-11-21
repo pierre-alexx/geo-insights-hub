@@ -754,8 +754,11 @@ export async function fetchPersonaResults(personaId: string, pageId?: string): P
   let query = supabase
     .from('persona_results')
     .select('*')
-    .eq('persona_id', personaId)
     .order('timestamp', { ascending: false });
+
+  if (personaId) {
+    query = query.eq('persona_id', personaId);
+  }
 
   if (pageId) {
     query = query.eq('page_id', pageId);
