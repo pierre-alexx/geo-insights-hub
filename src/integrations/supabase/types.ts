@@ -68,6 +68,99 @@ export type Database = {
         }
         Relationships: []
       }
+      persona_results: {
+        Row: {
+          comprehension_score: number
+          global_geo_score: number
+          id: string
+          llm_response: string
+          page_id: string
+          persona_id: string
+          prompt: string
+          recommendation_score: number
+          recommendations: Json
+          relevance_score: number
+          timestamp: string
+          visibility_score: number
+        }
+        Insert: {
+          comprehension_score: number
+          global_geo_score: number
+          id?: string
+          llm_response: string
+          page_id: string
+          persona_id: string
+          prompt: string
+          recommendation_score: number
+          recommendations?: Json
+          relevance_score: number
+          timestamp?: string
+          visibility_score: number
+        }
+        Update: {
+          comprehension_score?: number
+          global_geo_score?: number
+          id?: string
+          llm_response?: string
+          page_id?: string
+          persona_id?: string
+          prompt?: string
+          recommendation_score?: number
+          recommendations?: Json
+          relevance_score?: number
+          timestamp?: string
+          visibility_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "persona_results_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persona_results_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personas: {
+        Row: {
+          created_at: string
+          description: string
+          goal: string
+          id: string
+          name: string
+          needs: string
+          risk_profile: string
+          typical_questions: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          goal: string
+          id?: string
+          name: string
+          needs: string
+          risk_profile: string
+          typical_questions?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          goal?: string
+          id?: string
+          name?: string
+          needs?: string
+          risk_profile?: string
+          typical_questions?: string[] | null
+        }
+        Relationships: []
+      }
       results: {
         Row: {
           comprehension_score: number

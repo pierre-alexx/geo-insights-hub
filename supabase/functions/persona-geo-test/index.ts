@@ -1,0 +1,249 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { personaId, pageId, numQuestions = 5 } = await req.json();
+
+    if (!personaId || !pageId) {
+      return new Response(JSON.stringify({ error: 'personaId and pageId are required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log('[persona-geo-test] Step 1: Fetching persona...');
+    const { data: persona, error: personaError } = await supabase
+      .from('personas')
+      .select('*')
+      .eq('id', personaId)
+      .single();
+
+    if (personaError || !persona) {
+      console.error('[persona-geo-test] Persona fetch error:', personaError);
+      return new Response(JSON.stringify({ error: 'Persona not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('[persona-geo-test] Step 2: Fetching page...');
+    const { data: page, error: pageError } = await supabase
+      .from('pages')
+      .select('*')
+      .eq('id', pageId)
+      .single();
+
+    if (pageError || !page) {
+      console.error('[persona-geo-test] Page fetch error:', pageError);
+      return new Response(JSON.stringify({ error: 'Page not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('[persona-geo-test] Step 3: Auto-generating persona-specific prompts...');
+    const personaContext = `
+Persona: ${persona.name}
+Description: ${persona.description}
+Goals: ${persona.goal}
+Risk Profile: ${persona.risk_profile}
+Needs: ${persona.needs}
+`;
+
+    const generateQuestionsResponse = await fetch(`${supabaseUrl}/functions/v1/geo-engine`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({
+        task: 'answer',
+        pageHtml: page.html_content,
+        pageUrl: page.url,
+        promptText: `Generate exactly ${numQuestions} realistic, specific questions that this persona would ask about this page. Return ONLY a JSON array of question strings, nothing else. Example format: ["Question 1?", "Question 2?"]`,
+        extraContext: personaContext,
+      }),
+    });
+
+    if (!generateQuestionsResponse.ok) {
+      const errorText = await generateQuestionsResponse.text();
+      console.error('[persona-geo-test] Question generation error:', errorText);
+      return new Response(JSON.stringify({ error: 'Failed to generate questions' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const questionsData = await generateQuestionsResponse.json();
+    let questions: string[] = [];
+    
+    try {
+      if (typeof questionsData.result === 'string') {
+        questions = JSON.parse(questionsData.result);
+      } else if (Array.isArray(questionsData.result)) {
+        questions = questionsData.result;
+      } else {
+        questions = [questionsData.result];
+      }
+    } catch (e) {
+      console.error('[persona-geo-test] Failed to parse questions:', e);
+      questions = [`What does this page offer for someone like ${persona.name}?`];
+    }
+
+    console.log('[persona-geo-test] Generated questions:', questions);
+
+    console.log('[persona-geo-test] Step 4: Running multi-test GEO pipeline...');
+    const individualResults = [];
+
+    for (const question of questions) {
+      console.log('[persona-geo-test] Testing question:', question);
+      
+      const scoreResponse = await fetch(`${supabaseUrl}/functions/v1/geo-engine`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          task: 'score',
+          pageHtml: page.html_content,
+          pageUrl: page.url,
+          promptText: question,
+          llmAnswer: '',
+          extraContext: personaContext,
+        }),
+      });
+
+      if (!scoreResponse.ok) {
+        console.error('[persona-geo-test] Score error for question:', question);
+        continue;
+      }
+
+      const scoreData = await scoreResponse.json();
+      const result = scoreData.result;
+
+      const { error: insertError } = await supabase
+        .from('persona_results')
+        .insert({
+          persona_id: personaId,
+          page_id: pageId,
+          prompt: question,
+          llm_response: result.llm_response || '',
+          relevance_score: result.relevance_score || 0,
+          comprehension_score: result.comprehension_score || 0,
+          visibility_score: result.visibility_score || 0,
+          recommendation_score: result.recommendation_score || 0,
+          global_geo_score: result.global_geo_score || 0,
+          recommendations: result.recommendations || [],
+        });
+
+      if (insertError) {
+        console.error('[persona-geo-test] Insert error:', insertError);
+      }
+
+      individualResults.push({
+        question,
+        llm_response: result.llm_response || '',
+        relevance_score: result.relevance_score || 0,
+        comprehension_score: result.comprehension_score || 0,
+        visibility_score: result.visibility_score || 0,
+        recommendation_score: result.recommendation_score || 0,
+        global_geo_score: result.global_geo_score || 0,
+        recommendations: result.recommendations || [],
+      });
+    }
+
+    console.log('[persona-geo-test] Step 5: Aggregating persona-level insights...');
+    const avgRelevance = individualResults.reduce((sum, r) => sum + r.relevance_score, 0) / individualResults.length;
+    const avgComprehension = individualResults.reduce((sum, r) => sum + r.comprehension_score, 0) / individualResults.length;
+    const avgVisibility = individualResults.reduce((sum, r) => sum + r.visibility_score, 0) / individualResults.length;
+    const avgRecommendation = individualResults.reduce((sum, r) => sum + r.recommendation_score, 0) / individualResults.length;
+    const avgGeoScore = individualResults.reduce((sum, r) => sum + r.global_geo_score, 0) / individualResults.length;
+
+    const gapAnalysisResponse = await fetch(`${supabaseUrl}/functions/v1/geo-engine`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({
+        task: 'gap-analysis',
+        pageHtml: page.html_content,
+        pageUrl: page.url,
+        extraContext: JSON.stringify({
+          personaDescription: personaContext,
+          questions: questions,
+          results: individualResults,
+          avgScores: {
+            relevance: avgRelevance,
+            comprehension: avgComprehension,
+            visibility: avgVisibility,
+            recommendation: avgRecommendation,
+            global: avgGeoScore,
+          },
+        }),
+      }),
+    });
+
+    let gapAnalysis = {
+      persona_strengths: [],
+      persona_weaknesses: [],
+      persona_opportunities: [],
+      persona_recommendations: [],
+    };
+
+    if (gapAnalysisResponse.ok) {
+      const gapData = await gapAnalysisResponse.json();
+      try {
+        if (typeof gapData.result === 'string') {
+          gapAnalysis = JSON.parse(gapData.result);
+        } else {
+          gapAnalysis = gapData.result;
+        }
+      } catch (e) {
+        console.error('[persona-geo-test] Failed to parse gap analysis:', e);
+      }
+    }
+
+    console.log('[persona-geo-test] Step 6: Returning final payload...');
+    return new Response(JSON.stringify({
+      questions,
+      individual_results: individualResults,
+      aggregated: {
+        avg_relevance: avgRelevance,
+        avg_comprehension: avgComprehension,
+        avg_visibility: avgVisibility,
+        avg_recommendation: avgRecommendation,
+        avg_geo_score: avgGeoScore,
+        persona_strengths: gapAnalysis.persona_strengths || [],
+        persona_weaknesses: gapAnalysis.persona_weaknesses || [],
+        persona_opportunities: gapAnalysis.persona_opportunities || [],
+        persona_recommendations: gapAnalysis.persona_recommendations || [],
+      },
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('[persona-geo-test] Error:', error);
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});

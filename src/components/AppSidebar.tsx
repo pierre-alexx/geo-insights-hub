@@ -1,4 +1,4 @@
-import { BarChart3, PlayCircle, FileText, LogOut, Globe, Wand2 } from "lucide-react";
+import { BarChart3, PlayCircle, FileText, LogOut, Globe, Wand2, Target, Users } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,8 @@ const menuItems = [
   { title: "Results", url: "/results", icon: FileText },
   { title: "Crawler", url: "/crawler", icon: Globe },
   { title: "Rewriter", url: "/rewriter", icon: Wand2 },
+  { title: "Persona GEO", url: "/persona-geo", icon: Target },
+  { title: "Personas", url: "/personas", icon: Users },
 ];
 
 export function AppSidebar() {

@@ -651,3 +651,118 @@ export async function fetchRewriteStats() {
     };
   }
 }
+
+export interface Persona {
+  id: string;
+  name: string;
+  description: string;
+  goal: string;
+  risk_profile: string;
+  needs: string;
+  typical_questions: string[];
+  created_at: string;
+}
+
+export interface PersonaResult {
+  id: string;
+  persona_id: string;
+  page_id: string;
+  prompt: string;
+  llm_response: string;
+  relevance_score: number;
+  comprehension_score: number;
+  visibility_score: number;
+  recommendation_score: number;
+  global_geo_score: number;
+  recommendations: any;
+  timestamp: string;
+}
+
+export async function fetchPersonas(): Promise<Persona[]> {
+  const { data, error } = await supabase
+    .from('personas')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function fetchPersona(id: string): Promise<Persona> {
+  const { data, error } = await supabase
+    .from('personas')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createPersona(persona: Omit<Persona, 'id' | 'created_at'>): Promise<Persona> {
+  const { data, error } = await supabase
+    .from('personas')
+    .insert(persona)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updatePersona(id: string, persona: Partial<Omit<Persona, 'id' | 'created_at'>>): Promise<Persona> {
+  const { data, error } = await supabase
+    .from('personas')
+    .update(persona)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deletePersona(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('personas')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+}
+
+export async function runPersonaGeoTest(personaId: string, pageId: string, numQuestions: number = 5) {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/persona-geo-test`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ personaId, pageId, numQuestions })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to run persona GEO test');
+  }
+
+  return await response.json();
+}
+
+export async function fetchPersonaResults(personaId: string, pageId?: string): Promise<PersonaResult[]> {
+  let query = supabase
+    .from('persona_results')
+    .select('*')
+    .eq('persona_id', personaId)
+    .order('timestamp', { ascending: false });
+
+  if (pageId) {
+    query = query.eq('page_id', pageId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw error;
+  return data || [];
+}
