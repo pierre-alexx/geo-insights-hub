@@ -49,9 +49,9 @@ export default function Dashboard() {
   return (
     <div className="w-full space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Page GEO Dashboard</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">BNP GEO</h1>
         <p className="text-sm sm:text-base text-muted-foreground mt-1">
-          Monitor BNP Paribas page performance in LLM responses
+          Monitor page performance in LLM responses
         </p>
       </div>
 
