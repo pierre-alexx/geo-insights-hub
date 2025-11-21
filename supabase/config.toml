@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.rewrite-page]
 verify_jwt = false
+
+[functions.geo-engine]
+verify_jwt = false
+
+[functions.populate-playbook]
+verify_jwt = false
