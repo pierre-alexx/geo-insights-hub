@@ -68,6 +68,57 @@ export async function fetchPage(url: string): Promise<Page> {
   };
 }
 
+export async function createPageManually(url: string, title: string, htmlContent: string): Promise<Page> {
+  const { data: existingPage } = await supabase
+    .from('pages')
+    .select('id')
+    .eq('url', url)
+    .single();
+
+  if (existingPage) {
+    const { data, error } = await supabase
+      .from('pages')
+      .update({
+        title,
+        html_content: htmlContent,
+        fetch_timestamp: new Date().toISOString()
+      })
+      .eq('id', existingPage.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      id: data.id,
+      url: data.url,
+      title: data.title,
+      html_content: data.html_content,
+      fetch_timestamp: data.fetch_timestamp
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('pages')
+    .insert({
+      url,
+      title,
+      html_content: htmlContent
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    url: data.url,
+    title: data.title,
+    html_content: data.html_content,
+    fetch_timestamp: data.fetch_timestamp
+  };
+}
+
 export async function fetchPageById(id: string): Promise<Page | null> {
   const { data, error } = await supabase
     .from('pages')
