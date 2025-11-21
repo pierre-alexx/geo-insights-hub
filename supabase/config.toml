@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.indexability-score]
 verify_jwt = false
+
+[functions.create-geo-page]
+verify_jwt = false

@@ -57,8 +57,19 @@ export interface IndexabilityResult {
   created_at: string;
 }
 
+export interface GeneratedPage {
+  id: string;
+  persona_id: string | null;
+  html_content: string;
+  outline: string;
+  rationale: string;
+  persona_rationale: string | null;
+  metadata: any;
+  created_at: string;
+}
+
 export async function geoEngine(payload: {
-  task: 'score' | 'rewrite' | 'gap-analysis' | 'answer' | 'indexability';
+  task: 'score' | 'rewrite' | 'gap-analysis' | 'answer' | 'indexability' | 'create';
   pageHtml?: string;
   pageUrl?: string;
   promptText?: string;
@@ -652,7 +663,7 @@ export async function deletePersona(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function runPersonaGeoTest(personaId: string, pageId: string, numQuestions: number = 5) {
+export async function runPersonaGeoTest(personaId: string, pageId: string, numQuestions: number = 6) {
   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
   
   const response = await fetch(`${SUPABASE_URL}/functions/v1/persona-geo-test`, {
@@ -853,3 +864,59 @@ export async function fetchIndexabilityStats() {
   }
 }
 
+export async function createGeoPage(payload: {
+  mode: 'general' | 'persona';
+  personaId?: string | null;
+  pageTitle: string;
+  pageGoal: string;
+  targetAudience?: string;
+  tone?: string;
+  requiredSections?: string;
+  keyMessages?: string;
+  faqs?: string;
+  additionalContext?: string;
+  inspirationUrls?: string[];
+}): Promise<GeneratedPage> {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/create-geo-page`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create GEO page');
+  }
+
+  const data = await response.json();
+  return data.page;
+}
+
+export async function fetchGeneratedPages(): Promise<GeneratedPage[]> {
+  const { data, error } = await supabase
+    .from('generated_pages')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function fetchGeneratedPage(id: string): Promise<GeneratedPage | null> {
+  const { data, error } = await supabase
+    .from('generated_pages')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching generated page:', error);
+    return null;
+  }
+
+  return data;
+}

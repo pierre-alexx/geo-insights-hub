@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      generated_pages: {
+        Row: {
+          created_at: string
+          html_content: string
+          id: string
+          metadata: Json | null
+          outline: string
+          persona_id: string | null
+          persona_rationale: string | null
+          rationale: string
+        }
+        Insert: {
+          created_at?: string
+          html_content: string
+          id?: string
+          metadata?: Json | null
+          outline: string
+          persona_id?: string | null
+          persona_rationale?: string | null
+          rationale: string
+        }
+        Update: {
+          created_at?: string
+          html_content?: string
+          id?: string
+          metadata?: Json | null
+          outline?: string
+          persona_id?: string | null
+          persona_rationale?: string | null
+          rationale?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_pages_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       geo_playbook: {
         Row: {
           chunk: string
