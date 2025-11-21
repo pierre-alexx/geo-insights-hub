@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { runGeoTest, GeoResult } from "@/services/geoService";
+import { fetchPage, runPageGeoTest, GeoResult, Page } from "@/services/geoService";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -15,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader } from "@/components/Loader";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { PlayCircle, ExternalLink, Copy } from "lucide-react";
+import { PlayCircle, ExternalLink, Copy, Download } from "lucide-react";
 import { toast } from "sonner";
 
 const promptTypes = [
@@ -28,12 +29,38 @@ const promptTypes = [
 
 export default function RunTest() {
   const navigate = useNavigate();
+  const [url, setUrl] = useState("");
+  const [fetchingPage, setFetchingPage] = useState(false);
+  const [page, setPage] = useState<Page | null>(null);
   const [promptType, setPromptType] = useState("");
   const [promptText, setPromptText] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GeoResult | null>(null);
 
+  const handleFetchPage = async () => {
+    if (!url.trim()) {
+      toast.error("Please enter a URL");
+      return;
+    }
+
+    setFetchingPage(true);
+    try {
+      const fetchedPage = await fetchPage(url);
+      setPage(fetchedPage);
+      toast.success("Page fetched successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to fetch page");
+      console.error(error);
+    } finally {
+      setFetchingPage(false);
+    }
+  };
+
   const handleRunTest = async () => {
+    if (!page) {
+      toast.error("Please fetch a page first");
+      return;
+    }
     if (!promptType || !promptText.trim()) {
       toast.error("Please select a prompt type and enter prompt text");
       return;
@@ -42,9 +69,9 @@ export default function RunTest() {
     setLoading(true);
     setResult(null);
     try {
-      const testResult = await runGeoTest(promptType, promptText);
+      const testResult = await runPageGeoTest(page.id, promptType, promptText);
       setResult(testResult);
-      toast.success("GEO test completed and saved successfully");
+      toast.success("Page GEO test completed and saved successfully");
     } catch (error: any) {
       toast.error(error.message || "Failed to run GEO test");
       console.error(error);
@@ -54,6 +81,8 @@ export default function RunTest() {
   };
 
   const handleNewTest = () => {
+    setUrl("");
+    setPage(null);
     setPromptType("");
     setPromptText("");
     setResult(null);
@@ -66,62 +95,97 @@ export default function RunTest() {
     }
   };
 
-  const getPresenceLabel = (score: number) => {
-    if (score === 2) return { label: "High Presence", variant: "default" as const };
-    if (score === 1) return { label: "Medium Presence", variant: "secondary" as const };
-    return { label: "Low Presence", variant: "destructive" as const };
+  const getScoreColor = (score: number) => {
+    if (score >= 0.7) return "default";
+    if (score >= 0.4) return "secondary";
+    return "destructive";
   };
 
-  const getSentimentLabel = (score: number) => {
-    if (score > 0.3) return { label: "Positive", variant: "default" as const };
-    if (score > -0.3) return { label: "Neutral", variant: "secondary" as const };
-    return { label: "Negative", variant: "destructive" as const };
-  };
+  const formatScore = (score: number) => `${Math.round(score * 100)}%`;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Run GEO Test</h1>
+        <h1 className="text-3xl font-bold text-foreground">Run Page GEO Test</h1>
         <p className="text-muted-foreground mt-1">
-          Test BNP Paribas presence in LLM responses
+          Evaluate how well LLMs understand and use specific BNP pages
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-foreground">Configure Test</CardTitle>
+          <CardTitle className="text-foreground">1. Fetch Page</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="prompt-type">Prompt Type</Label>
-            <Select value={promptType} onValueChange={setPromptType} disabled={loading || result !== null}>
-              <SelectTrigger id="prompt-type">
-                <SelectValue placeholder="Select prompt type" />
-              </SelectTrigger>
-              <SelectContent>
-                {promptTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="url">BNP Paribas Page URL</Label>
+            <div className="flex gap-2">
+              <Input
+                id="url"
+                placeholder="https://www.bnpparibas.com/..."
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={fetchingPage || page !== null}
+              />
+              <Button 
+                onClick={handleFetchPage} 
+                disabled={fetchingPage || !url.trim() || page !== null}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Fetch Page
+              </Button>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="prompt-text">Prompt to Send to LLM</Label>
-            <Textarea
-              id="prompt-text"
-              placeholder="Enter your prompt here..."
-              value={promptText}
-              onChange={(e) => setPromptText(e.target.value)}
-              rows={4}
-              className="resize-none"
-              disabled={loading || result !== null}
-            />
-          </div>
+          {page && (
+            <div className="bg-muted p-4 rounded-md">
+              <h3 className="font-semibold text-sm mb-2">Page Loaded:</h3>
+              <p className="text-sm text-muted-foreground mb-1">
+                <span className="font-medium">Title:</span> {page.title}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium">URL:</span> {page.url}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-          {!result && (
+      {page && !result && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-foreground">2. Configure Test</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="prompt-type">Prompt Type</Label>
+              <Select value={promptType} onValueChange={setPromptType} disabled={loading}>
+                <SelectTrigger id="prompt-type">
+                  <SelectValue placeholder="Select prompt type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {promptTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="prompt-text">Prompt to Send to LLM</Label>
+              <Textarea
+                id="prompt-text"
+                placeholder="Enter your prompt here..."
+                value={promptText}
+                onChange={(e) => setPromptText(e.target.value)}
+                rows={4}
+                className="resize-none"
+                disabled={loading}
+              />
+            </div>
+
             <Button 
               onClick={handleRunTest} 
               disabled={loading || !promptType || !promptText.trim()}
@@ -129,16 +193,16 @@ export default function RunTest() {
               size="lg"
             >
               <PlayCircle className="mr-2 h-5 w-5" />
-              Run GEO Test
+              Run Page GEO Test
             </Button>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {loading && (
         <Card>
           <CardContent className="py-12">
-            <Loader text="Running GEO test... This may take 10-20 seconds..." />
+            <Loader text="Running page GEO test... This may take 15-30 seconds..." />
           </CardContent>
         </Card>
       )}
@@ -161,6 +225,13 @@ export default function RunTest() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
+              <h3 className="text-sm font-semibold mb-2 text-foreground">Page Tested</h3>
+              <p className="text-sm text-muted-foreground">{result.pageTitle}</p>
+            </div>
+
+            <Separator />
+
+            <div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold text-foreground">LLM Raw Answer</h3>
                 <Button onClick={handleCopyAnswer} variant="ghost" size="sm">
@@ -175,42 +246,46 @@ export default function RunTest() {
 
             <Separator />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-sm font-semibold mb-3 text-foreground">Presence Score</h3>
-                <Badge variant={getPresenceLabel(result.presenceScore).variant} className="text-base px-4 py-2">
-                  {getPresenceLabel(result.presenceScore).label}
-                </Badge>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Score: {result.presenceScore}/2
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-semibold mb-3 text-foreground">Sentiment Score</h3>
-                <Badge variant={getSentimentLabel(result.sentimentScore).variant} className="text-base px-4 py-2">
-                  {getSentimentLabel(result.sentimentScore).label}
-                </Badge>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Score: {result.sentimentScore.toFixed(2)}
-                </p>
-              </div>
-            </div>
-
             <div>
-              <h3 className="text-sm font-semibold mb-3 text-foreground">Recommendation Level</h3>
-              <Badge 
-                variant={result.recommended ? "default" : "secondary"}
-                className="text-base px-4 py-2"
-              >
-                {result.recommended ? "✓ Recommended" : "Not Recommended"}
-              </Badge>
+              <h3 className="text-sm font-semibold mb-4 text-foreground">GEO Scores</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Global GEO Score</p>
+                  <Badge variant={getScoreColor(result.globalGeoScore)} className="text-base px-3 py-1">
+                    {formatScore(result.globalGeoScore)}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Relevance</p>
+                  <Badge variant={getScoreColor(result.relevanceScore)} className="text-base px-3 py-1">
+                    {formatScore(result.relevanceScore)}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Comprehension</p>
+                  <Badge variant={getScoreColor(result.comprehensionScore)} className="text-base px-3 py-1">
+                    {formatScore(result.comprehensionScore)}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Visibility</p>
+                  <Badge variant={getScoreColor(result.visibilityScore)} className="text-base px-3 py-1">
+                    {formatScore(result.visibilityScore)}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Recommendation</p>
+                  <Badge variant={getScoreColor(result.recommendationScore)} className="text-base px-3 py-1">
+                    {formatScore(result.recommendationScore)}
+                  </Badge>
+                </div>
+              </div>
             </div>
 
             <Separator />
 
             <div>
-              <h3 className="text-sm font-semibold mb-3 text-foreground">Auto-generated Recommendations</h3>
+              <h3 className="text-sm font-semibold mb-3 text-foreground">Recommendations</h3>
               <ul className="space-y-2">
                 {result.recommendations.map((rec, index) => (
                   <li key={index} className="flex items-start gap-3 text-sm text-muted-foreground">

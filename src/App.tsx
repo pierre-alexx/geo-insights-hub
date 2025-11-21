@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import RunTest from "./pages/RunTest";
 import Results from "./pages/Results";
+import PageDetail from "./pages/PageDetail";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -34,7 +35,7 @@ const App = () => (
                         <SidebarTrigger />
                         <div className="flex items-center gap-2">
                           <h2 className="text-sm font-semibold text-foreground">
-                            BNP Paribas GEO Analytics
+                            BNP Paribas Page GEO Analytics
                           </h2>
                         </div>
                       </header>
@@ -43,6 +44,7 @@ const App = () => (
                           <Route path="/" element={<Dashboard />} />
                           <Route path="/run-test" element={<RunTest />} />
                           <Route path="/results" element={<Results />} />
+                          <Route path="/page/:pageId" element={<PageDetail />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </main>

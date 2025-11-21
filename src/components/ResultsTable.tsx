@@ -26,7 +26,8 @@ export function ResultsTable({ results, onViewDetails }: ResultsTableProps) {
   const filteredResults = results.filter(
     (r) =>
       r.promptText.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.promptType.toLowerCase().includes(searchTerm.toLowerCase())
+      r.promptType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.pageUrl.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const sortedResults = [...filteredResults].sort((a, b) => {
@@ -35,24 +36,19 @@ export function ResultsTable({ results, onViewDetails }: ResultsTableProps) {
         ? new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
         : new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     }
-    if (sortBy === "presenceScore") {
+    if (sortBy === "globalGeoScore") {
       return sortOrder === "asc"
-        ? a.presenceScore - b.presenceScore
-        : b.presenceScore - a.presenceScore;
+        ? a.globalGeoScore - b.globalGeoScore
+        : b.globalGeoScore - a.globalGeoScore;
     }
     return 0;
   });
 
-  const getPresenceBadge = (score: number) => {
-    if (score === 2) return <Badge className="bg-success">High</Badge>;
-    if (score === 1) return <Badge variant="secondary">Medium</Badge>;
-    return <Badge variant="destructive">Low</Badge>;
-  };
+  const formatScore = (score: number) => `${Math.round(score * 100)}%`;
 
-  const getSentimentBadge = (score: number) => {
-    if (score > 0.3) return <Badge className="bg-success">Positive</Badge>;
-    if (score > -0.3) return <Badge variant="secondary">Neutral</Badge>;
-    return <Badge variant="destructive">Negative</Badge>;
+  const getScoreBadge = (score: number) => {
+    const variant = score >= 0.7 ? "default" : score >= 0.4 ? "secondary" : "destructive";
+    return <Badge variant={variant}>{formatScore(score)}</Badge>;
   };
 
   return (
@@ -61,7 +57,7 @@ export function ResultsTable({ results, onViewDetails }: ResultsTableProps) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by prompt or type..."
+            placeholder="Search by URL, prompt, or type..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -83,18 +79,18 @@ export function ResultsTable({ results, onViewDetails }: ResultsTableProps) {
             Date {sortBy === "timestamp" && (sortOrder === "asc" ? "↑" : "↓")}
           </Button>
           <Button
-            variant={sortBy === "presenceScore" ? "default" : "outline"}
+            variant={sortBy === "globalGeoScore" ? "default" : "outline"}
             size="sm"
             onClick={() => {
-              if (sortBy === "presenceScore") {
+              if (sortBy === "globalGeoScore") {
                 setSortOrder(sortOrder === "asc" ? "desc" : "asc");
               } else {
-                setSortBy("presenceScore");
+                setSortBy("globalGeoScore");
                 setSortOrder("desc");
               }
             }}
           >
-            Score {sortBy === "presenceScore" && (sortOrder === "asc" ? "↑" : "↓")}
+            Score {sortBy === "globalGeoScore" && (sortOrder === "asc" ? "↑" : "↓")}
           </Button>
         </div>
       </div>
@@ -103,10 +99,13 @@ export function ResultsTable({ results, onViewDetails }: ResultsTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>URL</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Prompt</TableHead>
-              <TableHead>Presence</TableHead>
-              <TableHead>Sentiment</TableHead>
+              <TableHead>GEO Score</TableHead>
+              <TableHead className="hidden md:table-cell">Relevance</TableHead>
+              <TableHead className="hidden md:table-cell">Comprehension</TableHead>
+              <TableHead className="hidden lg:table-cell">Visibility</TableHead>
+              <TableHead className="hidden lg:table-cell">Recommendation</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -114,22 +113,26 @@ export function ResultsTable({ results, onViewDetails }: ResultsTableProps) {
           <TableBody>
             {sortedResults.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
                   No results found
                 </TableCell>
               </TableRow>
             ) : (
               sortedResults.map((result) => (
                 <TableRow key={result.id}>
+                  <TableCell className="max-w-xs">
+                    <p className="text-sm font-medium truncate">{result.pageTitle}</p>
+                    <p className="text-xs text-muted-foreground truncate">{result.pageUrl}</p>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline">{result.promptType}</Badge>
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {result.promptText}
-                  </TableCell>
-                  <TableCell>{getPresenceBadge(result.presenceScore)}</TableCell>
-                  <TableCell>{getSentimentBadge(result.sentimentScore)}</TableCell>
-                  <TableCell>
+                  <TableCell>{getScoreBadge(result.globalGeoScore)}</TableCell>
+                  <TableCell className="hidden md:table-cell">{formatScore(result.relevanceScore)}</TableCell>
+                  <TableCell className="hidden md:table-cell">{formatScore(result.comprehensionScore)}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{formatScore(result.visibilityScore)}</TableCell>
+                  <TableCell className="hidden lg:table-cell">{formatScore(result.recommendationScore)}</TableCell>
+                  <TableCell className="text-xs">
                     {new Date(result.timestamp).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
@@ -138,7 +141,7 @@ export function ResultsTable({ results, onViewDetails }: ResultsTableProps) {
                       size="sm"
                       onClick={() => onViewDetails(result)}
                     >
-                      View Details
+                      Details
                     </Button>
                   </TableCell>
                 </TableRow>

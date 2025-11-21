@@ -14,64 +14,79 @@ export type Database = {
   }
   public: {
     Tables: {
-      prompts: {
+      pages: {
         Row: {
-          created_at: string
+          fetch_timestamp: string
+          html_content: string | null
           id: string
-          text: string
-          type: string
+          title: string | null
+          url: string
         }
         Insert: {
-          created_at?: string
+          fetch_timestamp?: string
+          html_content?: string | null
           id?: string
-          text: string
-          type: string
+          title?: string | null
+          url: string
         }
         Update: {
-          created_at?: string
+          fetch_timestamp?: string
+          html_content?: string | null
           id?: string
-          text?: string
-          type?: string
+          title?: string | null
+          url?: string
         }
         Relationships: []
       }
       results: {
         Row: {
+          comprehension_score: number
+          global_geo_score: number
           id: string
           llm_response: string
-          presence_score: number
-          prompt_id: string
+          page_id: string
+          prompt_text: string
+          prompt_type: string
+          recommendation_score: number
           recommendations: Json
-          recommended: boolean
-          sentiment_score: number
+          relevance_score: number
           timestamp: string
+          visibility_score: number
         }
         Insert: {
+          comprehension_score: number
+          global_geo_score: number
           id?: string
           llm_response: string
-          presence_score: number
-          prompt_id: string
+          page_id: string
+          prompt_text: string
+          prompt_type: string
+          recommendation_score: number
           recommendations?: Json
-          recommended?: boolean
-          sentiment_score: number
+          relevance_score: number
           timestamp?: string
+          visibility_score: number
         }
         Update: {
+          comprehension_score?: number
+          global_geo_score?: number
           id?: string
           llm_response?: string
-          presence_score?: number
-          prompt_id?: string
+          page_id?: string
+          prompt_text?: string
+          prompt_type?: string
+          recommendation_score?: number
           recommendations?: Json
-          recommended?: boolean
-          sentiment_score?: number
+          relevance_score?: number
           timestamp?: string
+          visibility_score?: number
         }
         Relationships: [
           {
-            foreignKeyName: "results_prompt_id_fkey"
-            columns: ["prompt_id"]
+            foreignKeyName: "results_page_id_fkey"
+            columns: ["page_id"]
             isOneToOne: false
-            referencedRelation: "prompts"
+            referencedRelation: "pages"
             referencedColumns: ["id"]
           },
         ]
