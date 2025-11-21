@@ -105,7 +105,7 @@ export default function PageDetail() {
   const latestIndexability = indexabilityResults.length > 0 ? indexabilityResults[0] : null;
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex items-center gap-4">
         <Button onClick={() => navigate("/")} variant="ghost" size="sm">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -122,16 +122,16 @@ export default function PageDetail() {
             <p className="text-sm font-semibold mb-1">Title</p>
             <p className="text-sm text-muted-foreground">{page.title}</p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-semibold mb-1">URL</p>
             <a 
               href={page.url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-sm text-primary hover:underline flex items-center gap-1"
+              className="text-xs sm:text-sm text-primary hover:underline flex items-center gap-1 break-all"
             >
-              {page.url}
-              <ExternalLink className="h-3 w-3" />
+              <span className="break-all">{page.url}</span>
+              <ExternalLink className="h-3 w-3 shrink-0" />
             </a>
           </div>
           <div>
@@ -207,28 +207,28 @@ export default function PageDetail() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <div>
-                <p className="text-sm font-semibold mb-1">HTML Indexability</p>
-                <Badge variant="default" className="text-base">
+                <p className="text-xs sm:text-sm font-semibold mb-1 truncate">HTML Indexability</p>
+                <Badge variant="default" className="text-sm sm:text-base">
                   {formatScore(latestIndexability.html_indexability_score)}
                 </Badge>
               </div>
               <div>
-                <p className="text-sm font-semibold mb-1">Structure Clarity</p>
-                <Badge variant="default" className="text-base">
+                <p className="text-xs sm:text-sm font-semibold mb-1 truncate">Structure Clarity</p>
+                <Badge variant="default" className="text-sm sm:text-base">
                   {formatScore(latestIndexability.structure_clarity_score)}
                 </Badge>
               </div>
               <div>
-                <p className="text-sm font-semibold mb-1">Entity Clarity</p>
-                <Badge variant="default" className="text-base">
+                <p className="text-xs sm:text-sm font-semibold mb-1 truncate">Entity Clarity</p>
+                <Badge variant="default" className="text-sm sm:text-base">
                   {formatScore(latestIndexability.entity_clarity_score)}
                 </Badge>
               </div>
               <div>
-                <p className="text-sm font-semibold mb-1">Scannability</p>
-                <Badge variant="default" className="text-base">
+                <p className="text-xs sm:text-sm font-semibold mb-1 truncate">Scannability</p>
+                <Badge variant="default" className="text-sm sm:text-base">
                   {formatScore(latestIndexability.content_scannability_score)}
                 </Badge>
               </div>

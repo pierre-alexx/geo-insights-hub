@@ -51,24 +51,24 @@ export function DiffViewer({ originalHtml, rewrittenHtml, pageUrl }: DiffViewerP
       </CardHeader>
       <CardContent>
         {viewMode === "rendered" ? (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="min-w-0">
               <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Original</h3>
               <div className="border rounded-lg overflow-hidden">
                 <iframe
                   srcDoc={`${baseTag}${originalHtml}`}
-                  className="w-full h-[600px] bg-white"
+                  className="w-full h-[500px] lg:h-[600px] bg-white"
                   sandbox="allow-same-origin allow-top-navigation-by-user-activation"
                   title="Original Page"
                 />
               </div>
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-sm font-semibold mb-2 text-primary">Rewritten (GEO Optimized)</h3>
               <div className="border rounded-lg overflow-hidden border-primary">
                 <iframe
                   srcDoc={`${baseTag}${rewrittenHtml}`}
-                  className="w-full h-[600px] bg-white"
+                  className="w-full h-[500px] lg:h-[600px] bg-white"
                   sandbox="allow-same-origin allow-top-navigation-by-user-activation"
                   title="Rewritten Page"
                 />
@@ -82,12 +82,12 @@ export function DiffViewer({ originalHtml, rewrittenHtml, pageUrl }: DiffViewerP
               <TabsTrigger value="rewritten">Rewritten Code</TabsTrigger>
             </TabsList>
             <TabsContent value="original">
-              <pre className="p-4 bg-muted rounded-lg overflow-x-auto text-xs max-h-[600px] overflow-y-auto">
+              <pre className="p-4 bg-muted rounded-lg overflow-x-auto text-xs max-h-[500px] lg:max-h-[600px] overflow-y-auto">
                 <code>{originalHtml}</code>
               </pre>
             </TabsContent>
             <TabsContent value="rewritten">
-              <pre className="p-4 bg-muted rounded-lg overflow-x-auto text-xs max-h-[600px] overflow-y-auto">
+              <pre className="p-4 bg-muted rounded-lg overflow-x-auto text-xs max-h-[500px] lg:max-h-[600px] overflow-y-auto">
                 <code>{rewrittenHtml}</code>
               </pre>
             </TabsContent>

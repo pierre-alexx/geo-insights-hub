@@ -104,21 +104,22 @@ export function ResultsTable({ results, onViewDetails, type }: ResultsTableProps
         </div>
       </div>
 
-      <div className="rounded-md border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>URL</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>GEO Score</TableHead>
-              <TableHead className="hidden md:table-cell">Relevance</TableHead>
-              <TableHead className="hidden md:table-cell">Comprehension</TableHead>
-              <TableHead className="hidden lg:table-cell">Visibility</TableHead>
-              <TableHead className="hidden lg:table-cell">Recommendation</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
+      <div className="rounded-md border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[200px]">URL</TableHead>
+                <TableHead className="min-w-[100px]">Type</TableHead>
+                <TableHead className="min-w-[100px]">GEO Score</TableHead>
+                <TableHead className="hidden md:table-cell min-w-[100px]">Relevance</TableHead>
+                <TableHead className="hidden md:table-cell min-w-[120px]">Comprehension</TableHead>
+                <TableHead className="hidden lg:table-cell min-w-[100px]">Visibility</TableHead>
+                <TableHead className="hidden lg:table-cell min-w-[130px]">Recommendation</TableHead>
+                <TableHead className="min-w-[100px]">Date</TableHead>
+                <TableHead className="text-right min-w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {sortedResults.length === 0 ? (
               <TableRow>
@@ -130,18 +131,18 @@ export function ResultsTable({ results, onViewDetails, type }: ResultsTableProps
               sortedResults.map((result) => {
                 const isGeneral = type === "general";
                 const gr = result as GeoResult;
-                const pr = result as PersonaResult;
+                 const pr = result as PersonaResult;
                 
                 return (
                   <TableRow key={result.id}>
-                    <TableCell className="max-w-xs">
+                    <TableCell>
                       {isGeneral ? (
-                        <>
+                        <div className="max-w-[200px]">
                           <p className="text-sm font-medium truncate">{gr.pageTitle}</p>
                           <p className="text-xs text-muted-foreground truncate">{gr.pageUrl}</p>
-                        </>
+                        </div>
                       ) : (
-                        <p className="text-sm truncate">{pr.prompt}</p>
+                        <p className="text-sm truncate max-w-[200px]">{pr.prompt}</p>
                       )}
                     </TableCell>
                     <TableCell>
@@ -178,6 +179,7 @@ export function ResultsTable({ results, onViewDetails, type }: ResultsTableProps
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
     </div>
   );
