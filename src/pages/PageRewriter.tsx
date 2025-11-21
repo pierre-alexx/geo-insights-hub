@@ -1,329 +1,362 @@
 import { useState, useEffect } from "react";
-import { fetchPages, rewritePage, fetchRewrites, type Page, type Rewrite } from "@/services/geoService";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { fetchPages, fetchPersonas, rewritePageWithContext, fetchLatestRecommendations, fetchPersonaAggregatedResults, type Page, type Persona, type RewriteResult } from "@/services/geoService";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader } from "@/components/Loader";
 import { toast } from "sonner";
-import { Loader2, ChevronDown, ChevronRight, Wand2, FileCode, Eye } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DiffViewer } from "@/components/DiffViewer";
+import { Download, FileText, Copy, Target, User } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 export default function PageRewriter() {
   const [pages, setPages] = useState<Page[]>([]);
+  const [personas, setPersonas] = useState<Persona[]>([]);
   const [selectedPageId, setSelectedPageId] = useState<string>("");
-  const [selectedPage, setSelectedPage] = useState<Page | null>(null);
-  const [showOriginalHtml, setShowOriginalHtml] = useState(false);
-  const [rewriting, setRewriting] = useState(false);
-  const [latestRewrite, setLatestRewrite] = useState<Rewrite | null>(null);
-  const [rewrites, setRewrites] = useState<Rewrite[]>([]);
-  const [loadingPages, setLoadingPages] = useState(true);
+  const [mode, setMode] = useState<"general" | "persona">("general");
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
+  const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<RewriteResult | null>(null);
 
   useEffect(() => {
-    loadPages();
+    loadData();
   }, []);
 
-  useEffect(() => {
-    if (selectedPageId) {
-      loadRewrites(selectedPageId);
-    }
-  }, [selectedPageId]);
-
-  const loadPages = async () => {
+  const loadData = async () => {
     try {
-      const data = await fetchPages();
-      setPages(data);
+      const [pagesData, personasData] = await Promise.all([
+        fetchPages(),
+        fetchPersonas(),
+      ]);
+      setPages(pagesData);
+      setPersonas(personasData);
     } catch (error) {
-      toast.error("Failed to load pages");
-    } finally {
-      setLoadingPages(false);
+      console.error("Failed to load data:", error);
+      toast.error("Failed to load data");
     }
   };
 
-  const loadRewrites = async (pageId: string) => {
-    try {
-      const data = await fetchRewrites(pageId);
-      setRewrites(data);
-      if (data.length > 0) {
-        setLatestRewrite(data[0]);
-      }
-    } catch (error) {
-      console.error("Failed to load rewrites:", error);
-    }
-  };
+  const selectedPage = pages.find(p => p.id === selectedPageId);
+  const selectedPersona = personas.find(p => p.id === selectedPersonaId);
 
-  const handleFetchPage = async () => {
-    if (!selectedPageId) {
-      toast.error("Please select a page");
-      return;
-    }
-
-    try {
-      const { fetchPageById } = await import("@/services/geoService");
-      const page = await fetchPageById(selectedPageId);
-      if (page) {
-        setSelectedPage(page);
-        setShowOriginalHtml(false);
-      } else {
-        toast.error("Page not found");
-      }
-    } catch (error) {
-      console.error("Failed to fetch page:", error);
-      toast.error("Failed to load page content");
-    }
-  };
-
-  const handleRewrite = async () => {
+  const handleLoadRecommendations = async () => {
     if (!selectedPageId) {
       toast.error("Please select a page first");
       return;
     }
 
-    setRewriting(true);
     try {
-      const result = await rewritePage(selectedPageId);
-      setLatestRewrite(result);
-      toast.success("Page rewritten successfully");
-      await loadRewrites(selectedPageId);
+      if (mode === "general") {
+        const recs = await fetchLatestRecommendations(selectedPageId);
+        setRecommendations(recs);
+        if (recs.length === 0) {
+          toast.info("No recommendations found. Run a GEO test first.");
+        } else {
+          toast.success(`Loaded ${recs.length} recommendations`);
+        }
+      } else {
+        if (!selectedPersonaId) {
+          toast.error("Please select a persona");
+          return;
+        }
+        const data = await fetchPersonaAggregatedResults(selectedPersonaId, selectedPageId);
+        if (data) {
+          setRecommendations(data.allRecommendations);
+          toast.success(`Loaded ${data.allRecommendations.length} persona recommendations`);
+        } else {
+          toast.info("No persona test results found. Run a persona test first.");
+          setRecommendations([]);
+        }
+      }
     } catch (error) {
-      console.error("Rewrite failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to rewrite page");
-    } finally {
-      setRewriting(false);
+      console.error("Failed to load recommendations:", error);
+      toast.error("Failed to load recommendations");
     }
   };
 
+  const handleRewrite = async () => {
+    if (!selectedPageId) {
+      toast.error("Please select a page");
+      return;
+    }
+
+    if (mode === "persona" && !selectedPersonaId) {
+      toast.error("Please select a persona");
+      return;
+    }
+
+    setLoading(true);
+    setResult(null);
+
+    try {
+      const rewriteResult = await rewritePageWithContext({
+        pageId: selectedPageId,
+        personaId: mode === "persona" ? selectedPersonaId : null,
+        recommendations,
+        mode,
+      });
+      setResult(rewriteResult);
+      toast.success("Page rewritten successfully!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to rewrite page");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportHtml = () => {
+    if (!result) return;
+    const blob = new Blob([result.new_page_html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rewritten-${selectedPage?.title || "page"}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("HTML exported");
+  };
+
+  const handleCopyOutline = () => {
+    if (!result) return;
+    navigator.clipboard.writeText(result.new_page_outline);
+    toast.success("Outline copied to clipboard");
+  };
+
+  const handleCopyRationale = () => {
+    if (!result) return;
+    const text = `GEO Rationale:\n${result.geo_rationale}\n\n${result.persona_rationale ? `Persona Rationale:\n${result.persona_rationale}` : ""}`;
+    navigator.clipboard.writeText(text);
+    toast.success("Rationale copied to clipboard");
+  };
+
+  const handleNewRewrite = () => {
+    setResult(null);
+    setRecommendations([]);
+  };
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Page Rewriter AI</h1>
-        <p className="text-muted-foreground">
-          Optimize BNP pages for maximum LLM understanding and recall
+        <h1 className="text-3xl font-bold text-foreground">Page Rewriter (GEO Optimized)</h1>
+        <p className="text-muted-foreground mt-1">
+          Rewrite pages using GEO recommendations and persona insights
         </p>
       </div>
 
-      {/* Page Selector */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Page Selector</CardTitle>
-          <CardDescription>
-            Choose a page to analyze and rewrite
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="page-select">Select Page</Label>
-            <Select value={selectedPageId} onValueChange={setSelectedPageId}>
-              <SelectTrigger id="page-select">
-                <SelectValue placeholder={loadingPages ? "Loading pages..." : "Select a page"} />
-              </SelectTrigger>
-              <SelectContent>
-                {pages.map((page) => (
-                  <SelectItem key={page.id} value={page.id}>
-                    {page.title} - {page.url}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {!result ? (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>1. Select Page</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Choose a page to rewrite</Label>
+                <Select value={selectedPageId} onValueChange={setSelectedPageId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a page" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pages.map((page) => (
+                      <SelectItem key={page.id} value={page.id}>
+                        {page.title} - {page.url}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedPage && (
+                <div className="bg-muted p-4 rounded-lg">
+                  <p className="text-sm">
+                    <strong>URL:</strong> {selectedPage.url}
+                  </p>
+                  <p className="text-sm">
+                    <strong>Title:</strong> {selectedPage.title}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>2. Choose Rewrite Mode</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  variant={mode === "general" ? "default" : "outline"}
+                  className="h-24 flex flex-col items-center justify-center gap-2"
+                  onClick={() => setMode("general")}
+                >
+                  <Target className="h-6 w-6" />
+                  <div className="text-center">
+                    <div className="font-semibold">General GEO Rewrite</div>
+                    <div className="text-xs opacity-80">Based on GEO framework</div>
+                  </div>
+                </Button>
+                <Button
+                  variant={mode === "persona" ? "default" : "outline"}
+                  className="h-24 flex flex-col items-center justify-center gap-2"
+                  onClick={() => setMode("persona")}
+                >
+                  <User className="h-6 w-6" />
+                  <div className="text-center">
+                    <div className="font-semibold">Persona GEO Rewrite</div>
+                    <div className="text-xs opacity-80">Tailored for specific persona</div>
+                  </div>
+                </Button>
+              </div>
+
+              {mode === "persona" && (
+                <div className="space-y-2 mt-4">
+                  <Label>Select Persona</Label>
+                  <Select value={selectedPersonaId} onValueChange={setSelectedPersonaId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a persona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {personas.map((persona) => (
+                        <SelectItem key={persona.id} value={persona.id}>
+                          {persona.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedPersona && (
+                    <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
+                      <p><strong>Description:</strong> {selectedPersona.description}</p>
+                      <p><strong>Goal:</strong> {selectedPersona.goal}</p>
+                      <p><strong>Risk Profile:</strong> {selectedPersona.risk_profile}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>3. Load Recommendations</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button onClick={handleLoadRecommendations} disabled={!selectedPageId}>
+                <FileText className="mr-2 h-4 w-4" />
+                Load {mode === "persona" ? "Persona" : "Latest"} Recommendations
+              </Button>
+
+              {recommendations.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold">Loaded Recommendations:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {recommendations.map((rec, idx) => (
+                      <Badge key={idx} variant="secondary">{rec}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>4. Run Rewrite</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={handleRewrite}
+                disabled={loading || !selectedPageId || (mode === "persona" && !selectedPersonaId)}
+                size="lg"
+                className="w-full"
+              >
+                {loading ? "Rewriting..." : "Rewrite Page According to GEO Recommendations"}
+              </Button>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <>
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Rewrite Results</h2>
+            <div className="flex gap-2">
+              <Button onClick={handleExportHtml} variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export HTML
+              </Button>
+              <Button onClick={handleNewRewrite}>
+                New Rewrite
+              </Button>
+            </div>
           </div>
 
-          <Button onClick={handleFetchPage} disabled={!selectedPageId}>
-            <FileCode className="mr-2 h-4 w-4" />
-            Fetch Page
-          </Button>
+          <DiffViewer
+            originalHtml={result.original_page_html}
+            rewrittenHtml={result.new_page_html}
+            pageUrl={result.page_url}
+          />
 
-          {selectedPage && (
-            <Collapsible open={showOriginalHtml} onOpenChange={setShowOriginalHtml}>
-              <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
                 <div className="flex items-center justify-between">
-                  <Label>Original HTML</Label>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      {showOriginalHtml ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                      {showOriginalHtml ? "Hide" : "Show"}
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-                <CollapsibleContent>
-                  <div className="bg-muted rounded-lg p-4 max-h-96 overflow-auto">
-                    <pre className="text-xs">
-                      <code>{selectedPage.html_content?.substring(0, 2000)}...</code>
-                    </pre>
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Rewrite Panel */}
-      {selectedPage && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Rewrite Panel</CardTitle>
-            <CardDescription>
-              Generate LLM-optimized version of this page
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Button onClick={handleRewrite} disabled={rewriting}>
-                {rewriting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Rewriting...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 className="mr-2 h-4 w-4" />
-                    Rewrite Page for GEO Optimization
-                  </>
-                )}
-              </Button>
-              {rewrites.length > 0 && (
-                <Badge variant="secondary">
-                  {rewrites.length} rewrite{rewrites.length !== 1 ? "s" : ""} available
-                </Badge>
-              )}
-            </div>
-
-            {latestRewrite && (
-              <div className="space-y-4 pt-4 border-t">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Summary</h3>
-                  <p className="text-sm text-muted-foreground">{latestRewrite.summary}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">GEO Rationale</h3>
-                  <p className="text-sm text-muted-foreground">{latestRewrite.geoRationale}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Rewritten HTML</h3>
-                  <div className="bg-muted rounded-lg p-4 max-h-96 overflow-auto">
-                    <pre className="text-xs">
-                      <code>{latestRewrite.rewrittenHtml}</code>
-                    </pre>
-                  </div>
-                </div>
-
-                <p className="text-xs text-muted-foreground">
-                  Generated: {new Date(latestRewrite.timestamp).toLocaleString()}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Comparison View */}
-      {latestRewrite && selectedPage && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Comparison View</CardTitle>
-            <CardDescription>
-              Side-by-side comparison of original and rewritten HTML
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="side-by-side">
-              <TabsList>
-                <TabsTrigger value="side-by-side">Side by Side</TabsTrigger>
-                <TabsTrigger value="original">Original Only</TabsTrigger>
-                <TabsTrigger value="rewritten">Rewritten Only</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="side-by-side">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                      <Badge variant="outline">Original</Badge>
-                    </h4>
-                    <div className="border rounded-lg overflow-hidden bg-white">
-                      <iframe
-                        srcDoc={`<base href="${new URL(selectedPage.url).origin}/">${selectedPage.html_content || ''}`}
-                        className="w-full h-[600px] border-0"
-                        title="Original HTML"
-                        sandbox="allow-same-origin allow-scripts"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                      <Badge variant="default">Rewritten</Badge>
-                    </h4>
-                    <div className="border rounded-lg overflow-hidden bg-white">
-                      <iframe
-                        srcDoc={`<base href="${new URL(selectedPage.url).origin}/">${latestRewrite.rewrittenHtml}`}
-                        className="w-full h-[600px] border-0"
-                        title="Rewritten HTML"
-                        sandbox="allow-same-origin allow-scripts"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="original">
-                <div className="border rounded-lg overflow-hidden bg-white">
-                  <iframe
-                    srcDoc={`<base href="${new URL(selectedPage.url).origin}/">${selectedPage.html_content || ''}`}
-                    className="w-full h-[600px] border-0"
-                    title="Original HTML Full"
-                    sandbox="allow-same-origin allow-scripts"
-                  />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="rewritten">
-                <div className="border rounded-lg overflow-hidden bg-white">
-                  <iframe
-                    srcDoc={`<base href="${new URL(selectedPage.url).origin}/">${latestRewrite.rewrittenHtml}`}
-                    className="w-full h-[600px] border-0"
-                    title="Rewritten HTML Full"
-                    sandbox="allow-same-origin allow-scripts"
-                  />
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Previous Rewrites */}
-      {rewrites.length > 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Previous Rewrites</CardTitle>
-            <CardDescription>
-              History of all rewrites for this page
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {rewrites.map((rewrite, idx) => (
-                <div
-                  key={rewrite.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                  onClick={() => setLatestRewrite(rewrite)}
-                >
-                  <div>
-                    <p className="text-sm font-medium">
-                      Rewrite #{rewrites.length - idx}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(rewrite.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    <Eye className="h-4 w-4" />
+                  <CardTitle>New Page Outline</CardTitle>
+                  <Button onClick={handleCopyOutline} variant="ghost" size="sm">
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy
                   </Button>
                 </div>
-              ))}
-            </div>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-sm bg-muted p-4 rounded-lg whitespace-pre-wrap max-h-[400px] overflow-y-auto">
+                  {result.new_page_outline}
+                </pre>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Rationale</CardTitle>
+                  <Button onClick={handleCopyRationale} variant="ghost" size="sm">
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">GEO Rationale</h3>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+                    {result.geo_rationale}
+                  </p>
+                </div>
+
+                {result.persona_rationale && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-sm font-semibold mb-2">Persona Rationale</h3>
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+                        {result.persona_rationale}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+
+      {loading && (
+        <Card>
+          <CardContent className="py-12">
+            <Loader text="Rewriting page with GEO optimizations... This may take 30-60 seconds..." />
           </CardContent>
         </Card>
       )}

@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader } from "@/components/Loader";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { PlayCircle, ExternalLink, Copy, Download, FileText, Target, User, TrendingUp, AlertCircle, CheckCircle2, Lightbulb } from "lucide-react";
+import { PlayCircle, ExternalLink, Copy, Download, FileText, Target, User, TrendingUp, AlertCircle, CheckCircle2, Lightbulb, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -516,6 +516,24 @@ export default function RunTest() {
                 ))}
               </ul>
             </div>
+
+            <Separator />
+
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <h3 className="text-sm font-semibold mb-3 text-foreground">Next Step: Optimize Your Page</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Use these recommendations to automatically rewrite your page for better GEO performance
+              </p>
+              <Button 
+                onClick={() => navigate(`/rewriter?pageId=${page?.id}&mode=general`)}
+                variant="default"
+                size="lg"
+                className="w-full"
+              >
+                <Wand2 className="mr-2 h-5 w-5" />
+                Rewrite Page According to These Recommendations
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -704,6 +722,26 @@ export default function RunTest() {
                     ))}
                   </ul>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <h3 className="text-sm font-semibold mb-3 text-foreground">Next Step: Optimize for This Persona</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Use these persona insights to automatically rewrite your page
+                </p>
+                <Button 
+                  onClick={() => navigate(`/rewriter?pageId=${page?.id}&personaId=${selectedPersonaId}&mode=persona`)}
+                  variant="default"
+                  size="lg"
+                  className="w-full"
+                >
+                  <Wand2 className="mr-2 h-5 w-5" />
+                  Rewrite for This Persona
+                </Button>
               </div>
             </CardContent>
           </Card>

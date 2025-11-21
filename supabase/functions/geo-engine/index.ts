@@ -143,16 +143,18 @@ Return ONLY this JSON:
         break;
 
       case 'rewrite':
+        const rewriteContext = extraContext ? JSON.stringify(extraContext, null, 2) : "";
         userPrompt = `PAGE CONTENT:
 ${pageHtml}
 
-TASK:
-Rewrite the page using the GEO framework.
-Return JSON:
+${rewriteContext ? `CONTEXT:\n${rewriteContext}\n\n` : ''}TASK:
+Rewrite this page to be optimized for LLMs according to the GEO framework and playbook.
+${extraContext?.recommendations?.length ? `Address these specific recommendations:\n${extraContext.recommendations.join('\n')}\n\n` : ''}${extraContext?.persona ? `Tailor the content for this persona:\nName: ${extraContext.persona.name}\nDescription: ${extraContext.persona.description}\nGoal: ${extraContext.persona.goal}\nNeeds: ${extraContext.persona.needs}\nRisk Profile: ${extraContext.persona.risk_profile}\n\n` : ''}Return ONLY this JSON:
 {
-  "rewritten_html": "...",
-  "summary": "...",
-  "geo_rationale": "..."
+  "new_page_html": "complete rewritten HTML",
+  "new_page_outline": "hierarchical outline of the new page structure",
+  "geo_rationale": "explanation of GEO improvements made",
+  ${extraContext?.persona ? '"persona_rationale": "explanation of persona-specific tailoring"' : '"persona_rationale": null'}
 }`;
         break;
 
