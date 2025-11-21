@@ -1,1 +1,4 @@
 project_id = "olcoadxppkecxkbqbpxt"
+
+[functions.run-geo-test]
+verify_jwt = false

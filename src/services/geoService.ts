@@ -12,13 +12,10 @@ export interface GeoResult {
   timestamp: string;
 }
 
-// Developer mode toggle
-const USE_FAKE_EDGE_FUNCTION = true;
+const USE_FAKE_EDGE_FUNCTION = false;
 
-// Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Mock LLM response for testing
 async function mockRunGeoTest(promptType: string, promptText: string) {
   await delay(2000);
   
@@ -44,19 +41,27 @@ export async function runGeoTest(promptType: string, promptText: string): Promis
     let llmData;
     
     if (USE_FAKE_EDGE_FUNCTION) {
-      // Use mock data
       llmData = await mockRunGeoTest(promptType, promptText);
     } else {
-      // Call edge function (future implementation)
-      const { data, error } = await supabase.functions.invoke('run-geo-test', {
-        body: { promptType, promptText }
-      });
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
       
-      if (error) throw error;
-      llmData = data;
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/run-geo-test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ promptType, promptText })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Edge function error:', response.status, errorText);
+        throw new Error(`Edge function failed: ${errorText}`);
+      }
+
+      llmData = await response.json();
     }
     
-    // Save prompt to database
     const { data: promptData, error: promptError } = await supabase
       .from('prompts')
       .insert({
@@ -68,7 +73,6 @@ export async function runGeoTest(promptType: string, promptText: string): Promis
     
     if (promptError) throw promptError;
     
-    // Save result to database
     const { data: resultData, error: resultError } = await supabase
       .from('results')
       .insert({
@@ -84,7 +88,6 @@ export async function runGeoTest(promptType: string, promptText: string): Promis
     
     if (resultError) throw resultError;
     
-    // Return formatted result
     return {
       id: resultData.id,
       promptType,
@@ -163,14 +166,12 @@ export async function fetchStats() {
     const avgSentiment = results.reduce((sum: number, r: any) => sum + r.sentiment_score, 0) / totalResults;
     const recommendationRate = (results.filter((r: any) => r.recommended).length / totalResults) * 100;
     
-    // GEO Visibility Score: weighted combination
     const geoVisibilityScore = Math.round(
       (avgPresenceScore / 2) * 40 + 
       ((avgSentiment + 1) / 2) * 30 + 
       (recommendationRate / 100) * 30
     );
     
-    // Presence by type
     const presenceByType: Record<string, number> = {};
     const typeCounts: Record<string, number> = {};
     
@@ -184,7 +185,6 @@ export async function fetchStats() {
       typeCounts[type]++;
     });
     
-    // Average by type
     Object.keys(presenceByType).forEach(type => {
       presenceByType[type] = presenceByType[type] / typeCounts[type];
     });
