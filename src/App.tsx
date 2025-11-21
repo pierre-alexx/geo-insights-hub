@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import RunTest from "./pages/RunTest";
 import Results from "./pages/Results";
 import PageDetail from "./pages/PageDetail";
+import Crawler from "./pages/Crawler";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -45,6 +46,7 @@ const App = () => (
                           <Route path="/run-test" element={<RunTest />} />
                           <Route path="/results" element={<Results />} />
                           <Route path="/page/:pageId" element={<PageDetail />} />
+                          <Route path="/crawler" element={<Crawler />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </main>

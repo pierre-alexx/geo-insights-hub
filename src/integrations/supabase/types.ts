@@ -16,23 +16,32 @@ export type Database = {
     Tables: {
       pages: {
         Row: {
+          crawl_status: string | null
+          depth: number | null
           fetch_timestamp: string
           html_content: string | null
           id: string
+          parent_url: string | null
           title: string | null
           url: string
         }
         Insert: {
+          crawl_status?: string | null
+          depth?: number | null
           fetch_timestamp?: string
           html_content?: string | null
           id?: string
+          parent_url?: string | null
           title?: string | null
           url: string
         }
         Update: {
+          crawl_status?: string | null
+          depth?: number | null
           fetch_timestamp?: string
           html_content?: string | null
           id?: string
+          parent_url?: string | null
           title?: string | null
           url?: string
         }
