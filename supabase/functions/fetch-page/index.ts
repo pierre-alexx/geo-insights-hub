@@ -25,18 +25,12 @@ serve(async (req) => {
       );
     }
  
-    // Validate BNP domain
-    const urlObj = new URL(url);
-    const validDomains = ['bnpparibas.com', 'group.bnpparibas'];
-    const isValidDomain = validDomains.some(domain => 
-      urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
-    );
- 
-    if (!isValidDomain) {
+    // Validate BNP domain - check if "bnpparibas" appears anywhere in the URL
+    if (!url.toLowerCase().includes('bnpparibas')) {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'URL must be from a BNP Paribas domain'
+          error: 'URL must contain "bnpparibas"'
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
