@@ -25,6 +25,26 @@ export interface GeoResult {
   timestamp: string;
 }
 
+export interface RewriteRequest {
+  pageId: string;
+  personaId?: string | null;
+  recommendations?: string[];
+  weak_points?: string[];
+  opportunities?: string[];
+  persona_results?: any[];
+  mode: 'general' | 'persona';
+}
+
+export interface RewriteResult {
+  new_page_html: string;
+  new_page_outline: string;
+  geo_rationale: string;
+  persona_rationale: string | null;
+  original_page_html: string;
+  page_url: string;
+  page_title: string;
+}
+
 export async function geoEngine(payload: {
   task: 'score' | 'rewrite' | 'gap-analysis' | 'answer';
   pageHtml?: string;
@@ -626,3 +646,76 @@ export async function fetchPersonaResults(personaId: string, pageId?: string): P
   if (error) throw error;
   return data || [];
 }
+
+export async function rewritePageWithContext(request: RewriteRequest): Promise<RewriteResult> {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/rewrite-with-context`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to rewrite page');
+  }
+
+  return await response.json();
+}
+
+export async function fetchLatestRecommendations(pageId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('results')
+    .select('recommendations')
+    .eq('page_id', pageId)
+    .order('timestamp', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    return [];
+  }
+
+  const recommendations = data.recommendations as any;
+  return recommendations?.recommendations || recommendations || [];
+}
+
+export async function fetchPersonaAggregatedResults(personaId: string, pageId: string) {
+  const { data, error } = await supabase
+    .from('persona_results')
+    .select('*')
+    .eq('persona_id', personaId)
+    .eq('page_id', pageId);
+
+  if (error) throw error;
+
+  if (!data || data.length === 0) {
+    return null;
+  }
+
+  const avgScores = {
+    relevance: data.reduce((sum, r) => sum + r.relevance_score, 0) / data.length,
+    comprehension: data.reduce((sum, r) => sum + r.comprehension_score, 0) / data.length,
+    visibility: data.reduce((sum, r) => sum + r.visibility_score, 0) / data.length,
+    recommendation: data.reduce((sum, r) => sum + r.recommendation_score, 0) / data.length,
+    global: data.reduce((sum, r) => sum + r.global_geo_score, 0) / data.length,
+  };
+
+  const allRecommendations = data
+    .flatMap(r => {
+      const recs = r.recommendations as any;
+      return recs?.recommendations || recs || [];
+    })
+    .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i);
+
+  return {
+    avgScores,
+    allRecommendations,
+    totalTests: data.length,
+    results: data,
+  };
+}
+
