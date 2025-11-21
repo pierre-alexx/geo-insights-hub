@@ -228,11 +228,25 @@ Needs: ${persona.needs}
 
     if (gapAnalysisResponse.ok) {
       const gapData = await gapAnalysisResponse.json();
+      console.log('[persona-geo-test] Gap analysis response:', JSON.stringify(gapData));
       try {
-        if (typeof gapData.result === 'string') {
-          gapAnalysis = JSON.parse(gapData.result);
+        const rawResult = gapData.result || gapData;
+        let parsedGap;
+        
+        if (typeof rawResult === 'string') {
+          parsedGap = JSON.parse(rawResult);
         } else {
-          gapAnalysis = gapData.result;
+          parsedGap = rawResult;
+        }
+        
+        // Only update if we got valid data
+        if (parsedGap && typeof parsedGap === 'object') {
+          gapAnalysis = {
+            persona_strengths: parsedGap.persona_strengths || parsedGap.strengths || [],
+            persona_weaknesses: parsedGap.persona_weaknesses || parsedGap.weaknesses || [],
+            persona_opportunities: parsedGap.persona_opportunities || parsedGap.opportunities || [],
+            persona_recommendations: parsedGap.persona_recommendations || parsedGap.recommendations || [],
+          };
         }
       } catch (e) {
         console.error('[persona-geo-test] Failed to parse gap analysis:', e);
