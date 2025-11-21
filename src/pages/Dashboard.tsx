@@ -70,33 +70,33 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-6 md:grid-cols-5">
         <ScoreCard
-          title="Average Relevance"
+          title="Relevance"
           value={formatScore(stats.avgRelevance)}
           icon={Activity}
           description="Does the LLM use page info?"
         />
         <ScoreCard
-          title="Average Comprehension"
+          title="Comprehension"
           value={formatScore(stats.avgComprehension)}
           icon={TrendingUp}
           description="Is the content understood?"
         />
         <ScoreCard
-          title="Average Visibility"
+          title="Visibility"
           value={formatScore(stats.avgVisibility)}
           icon={Eye}
           description="Is the page cited?"
         />
         <ScoreCard
-          title="Average Recommendation"
+          title="Recommendation"
           value={formatScore(stats.avgRecommendation)}
           icon={ThumbsUp}
           description="Would the LLM recommend it?"
         />
         <ScoreCard
-          title="HTML Indexability"
+          title="Indexability"
           value={indexabilityStats ? formatScore(indexabilityStats.avgIndexability) : 'N/A'}
           icon={FileSearch}
           description="How LLM-friendly is the HTML?"
