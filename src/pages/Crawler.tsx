@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,10 +56,6 @@ export default function Crawler() {
   const [testProgress, setTestProgress] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
-  useState(() => {
-    loadPages();
-  });
-
   const loadPages = async () => {
     try {
       const data = await fetchPages();
@@ -71,6 +67,10 @@ export default function Crawler() {
       setLoadingPages(false);
     }
   };
+
+  useEffect(() => {
+    loadPages();
+  }, []);
 
   const handleCrawl = async () => {
     if (!startUrl) {
