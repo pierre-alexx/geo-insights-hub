@@ -21,7 +21,9 @@ export default function PersonaManagement() {
     goal: "",
     risk_profile: "",
     needs: "",
+    typical_questions: [] as string[],
   });
+  const [newQuestion, setNewQuestion] = useState("");
 
   useEffect(() => {
     loadPersonas();
@@ -43,7 +45,7 @@ export default function PersonaManagement() {
         await updatePersona(editingPersona.id, formData);
         toast.success("Persona updated");
       } else {
-        await createPersona({ ...formData, typical_questions: [] });
+        await createPersona(formData);
         toast.success("Persona created");
       }
       setShowCreateModal(false);
@@ -76,7 +78,9 @@ export default function PersonaManagement() {
       goal: "",
       risk_profile: "",
       needs: "",
+      typical_questions: [],
     });
+    setNewQuestion("");
   };
 
   const openEditModal = (persona: Persona) => {
@@ -87,8 +91,26 @@ export default function PersonaManagement() {
       goal: persona.goal,
       risk_profile: persona.risk_profile,
       needs: persona.needs,
+      typical_questions: persona.typical_questions || [],
     });
     setShowCreateModal(true);
+  };
+
+  const handleAddQuestion = () => {
+    if (newQuestion.trim()) {
+      setFormData({
+        ...formData,
+        typical_questions: [...formData.typical_questions, newQuestion.trim()]
+      });
+      setNewQuestion("");
+    }
+  };
+
+  const handleRemoveQuestion = (index: number) => {
+    setFormData({
+      ...formData,
+      typical_questions: formData.typical_questions.filter((_, i) => i !== index)
+    });
   };
 
   return (
@@ -159,6 +181,47 @@ export default function PersonaManagement() {
                   placeholder="What do they need from the content?"
                   rows={3}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Typical Questions</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Add example questions this persona might ask
+                </p>
+                <div className="space-y-2">
+                  {formData.typical_questions.map((question, index) => (
+                    <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
+                      <span className="text-sm flex-1">{question}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveQuestion(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter a typical question..."
+                      value={newQuestion}
+                      onChange={(e) => setNewQuestion(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddQuestion();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAddQuestion}
+                      disabled={!newQuestion.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
               <Button onClick={handleSubmit} disabled={loading} className="w-full">
                 {loading ? "Saving..." : editingPersona ? "Update Persona" : "Create Persona"}
