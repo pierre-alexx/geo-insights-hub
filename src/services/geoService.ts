@@ -35,16 +35,6 @@ export interface RewriteRequest {
   mode: 'general' | 'persona';
 }
 
-export interface QualityCheckResult {
-  structural_issues: string[];
-  compliance_issues: string[];
-  accuracy_issues: string[];
-  hallucination_risks: string[];
-  recommended_fixes: string[];
-  quality_score: number;
-  passes_validation: boolean;
-}
-
 export interface RewriteResult {
   new_page_html: string;
   new_page_outline: string;
@@ -53,7 +43,6 @@ export interface RewriteResult {
   original_page_html: string;
   page_url: string;
   page_title: string;
-  quality_check?: QualityCheckResult;
 }
 
 export interface IndexabilityResult {
@@ -702,40 +691,6 @@ export async function fetchPersonaResults(personaId: string, pageId?: string): P
   return data || [];
 }
 
-export async function performQualityCheck(
-  rewrittenHtml: string,
-  context: any
-): Promise<QualityCheckResult> {
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-  
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/geo-engine`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      task: "quality-check",
-      pageHtml: rewrittenHtml,
-      extraContext: JSON.stringify(context),
-    }),
-  });
-
-  if (!response.ok || !response) {
-    return {
-      structural_issues: [],
-      compliance_issues: [],
-      accuracy_issues: [],
-      hallucination_risks: [],
-      recommended_fixes: [],
-      quality_score: 0.5,
-      passes_validation: false,
-    };
-  }
-
-  const data = await response.json();
-  return data;
-}
-
 export async function rewritePageWithContext(request: RewriteRequest): Promise<RewriteResult> {
   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
   
@@ -752,18 +707,7 @@ export async function rewritePageWithContext(request: RewriteRequest): Promise<R
     throw new Error(error.error || 'Failed to rewrite page');
   }
 
-  const data = await response.json();
-  
-  const qualityCheckData = await performQualityCheck(data.new_page_html, {
-    original_html: data.original_page_html,
-    recommendations: request.recommendations,
-    persona_id: request.personaId,
-  });
-
-  return {
-    ...data,
-    quality_check: qualityCheckData,
-  };
+  return await response.json();
 }
 
 export async function fetchLatestRecommendations(pageId: string): Promise<string[]> {

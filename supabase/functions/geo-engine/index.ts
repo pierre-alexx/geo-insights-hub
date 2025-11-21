@@ -43,58 +43,6 @@ Follow this framework for ALL reasoning, scoring, rewriting, recommendations, an
 Never break from this framework. It defines your reasoning and outputs.
 `;
 
-const GEO_MASTER_QUALITY_FRAMEWORK = `
-GEO MASTER QUALITY FRAMEWORK (CRITICAL - MANDATORY FOR ALL TASKS):
-
-1. STRUCTURAL FIDELITY (STRICT)
-   - Do NOT invent new sections not implied by the content.
-   - Respect the hierarchy: H1 → H2 → H3.
-   - Keep HTML structure similar to what BNP typically uses (sections, lists, tables, etc.).
-   - Never create new financial products, tax regimes, numeric examples, thresholds, or regulations.
-   - Never hallucinate or over-elaborate content beyond what is strictly supported.
-
-2. TONE & VOICE (STRICT)
-   - Follow BNP Paribas Banque Privée tone: expert, neutral, precise, non-promotional.
-   - Use short sentences, professional vocabulary, and factual statements.
-   - No marketing fluff. No emotional language. Avoid "storytelling" unless a persona rewrite requires contextualization.
-
-3. CONTENT ACCURACY (CRITICAL)
-   - Preserve every factual element from the original HTML.
-   - NO fabricated percentages, thresholds, tax rules, dates, or regulatory conditions.
-   - If original content is vague, KEEP it vague. Clarify structure, not the facts.
-
-4. EXPLICIT LLM OPTIMIZATION (MANDATORY)
-   Every rewritten page MUST include:
-   - A clear Direct Answer (2–3 sentences)
-   - A Definitions block (essential concepts)
-   - Structured sections using H2/H3
-   - Bullet points + short paragraphs
-   - Comparisons (X vs Y) ONLY if grounded in the original content
-   - Clear "When it applies / When it does not apply"
-   - A concise Summary box at the end
-
-5. AEM-FRIENDLY HTML (STRICT)
-   - Do NOT modify <header>, <footer>, nav, scripts, or links structure.
-   - Only rewrite content inside the article.
-   - Preserve existing <section>, <figure>, <a>, <img>, <ul>, <ol>, <table>.
-   - Rewrite text, not containers.
-
-6. NO OVERWRITING (MANDATORY)
-   - Do not replace existing content with overly long or complex text.
-   - Keep original meaning, and only improve clarity, structure, LLM interpretability, and persona alignment.
-
-7. PERSONA MODE (IF ENABLED)
-   - Tailor the rewritten content ONLY in terms of angle, emphasis, and clarifications.
-   - DO NOT modify factual elements.
-   - DO NOT create persona-specific financial recommendations (compliance risk).
-   - You may adapt explanations for the persona's typical intent and concerns.
-
-8. OUTPUT FORMAT (STRICT)
-   Every rewrite must return the exact format specified in the task instructions.
-
-Follow these rules rigorously. Non-compliant outputs must be fully regenerated.
-`;
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -113,6 +61,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Step 1: Generate embedding for query context
     const queryContext = promptText || pageHtml?.substring(0, 2000) || '';
     
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
@@ -130,6 +79,7 @@ serve(async (req) => {
     const embeddingData = await embeddingResponse.json();
     const queryEmbedding = embeddingData.data[0].embedding;
 
+    // Step 2: Retrieve relevant playbook chunks using vector search
     const { data: playbookChunks, error: vectorError } = await supabase.rpc('match_playbook_chunks', {
       query_embedding: queryEmbedding,
       match_threshold: 0.5,
@@ -141,6 +91,7 @@ serve(async (req) => {
       retrievedContext = playbookChunks.map((chunk: any) => chunk.chunk).join('\n\n');
     }
 
+    // Step 3: Build OpenAI prompt based on task
     let userPrompt = '';
     let responseFormat: any = { type: "json_object" };
 
@@ -215,34 +166,8 @@ ${extraContext?.recommendations?.length ? `Address these specific recommendation
 ===PERSONA_RATIONALE===
 <persona-specific explanation as plain text, or leave empty if not applicable>
 ===END_PERSONA_RATIONALE===`;
+        // For rewrite we want free-form text, not JSON response_format
         responseFormat = undefined;
-        break;
-
-      case 'quality-check':
-        userPrompt = `REWRITTEN HTML:
-${pageHtml}
-
-ORIGINAL CONTEXT:
-${extraContext || ''}
-
-TASK:
-Evaluate this rewritten content against the GEO MASTER QUALITY FRAMEWORK.
-Check for:
-- Structural issues (invented sections, broken hierarchy)
-- Compliance issues (tone violations, promotional language)
-- Accuracy issues (fabricated data, hallucinations)
-- Hallucination risks (unsupported claims)
-
-Return ONLY this JSON:
-{
-  "structural_issues": [string],
-  "compliance_issues": [string],
-  "accuracy_issues": [string],
-  "hallucination_risks": [string],
-  "recommended_fixes": [string],
-  "quality_score": float (0-1),
-  "passes_validation": boolean
-}`;
         break;
 
       case 'gap-analysis':
@@ -303,9 +228,9 @@ Return ONLY valid JSON:
         throw new Error('Invalid task type');
     }
 
+    // Step 4: Call OpenAI with full context
     const messages = [
       { role: 'system', content: GEO_STYLE_GUIDE },
-      { role: 'system', content: GEO_MASTER_QUALITY_FRAMEWORK },
       { 
         role: 'system', 
         content: `These are the most relevant parts of the official GEO playbook:\n\n${retrievedContext}` 
@@ -341,10 +266,12 @@ Return ONLY valid JSON:
     const openAIData = await openAIResponse.json();
     const content = openAIData.choices[0].message.content;
 
+    // Step 5: Return the result
     let result;
     if (task === 'answer') {
       result = { answer: content };
     } else if (task === 'rewrite') {
+      // For rewrite, parse the plain-text sections using markers
       const extractSection = (label: string) => {
         const startTag = `===${label}===`;
         const endTag = `===END_${label}===`;
@@ -371,6 +298,7 @@ Return ONLY valid JSON:
       };
     } else {
       try {
+        // For scoring / gap-analysis tasks we still expect JSON
         result = JSON.parse(content);
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
