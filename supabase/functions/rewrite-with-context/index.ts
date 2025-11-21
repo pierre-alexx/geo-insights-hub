@@ -149,8 +149,15 @@ serve(async (req) => {
     });
 
     if (geoEngineError) {
+      console.error('GEO Engine invocation error:', geoEngineError);
       throw new Error(`GEO Engine error: ${geoEngineError.message}`);
     }
+
+    if (!geoEngineData) {
+      throw new Error('GEO Engine returned no data');
+    }
+
+    console.log('GEO Engine response received successfully');
 
     // 6. Return response
     return new Response(JSON.stringify({
