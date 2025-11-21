@@ -17,22 +17,28 @@ serve(async (req) => {
 
     if (!url) {
       return new Response(
-        JSON.stringify({ error: 'URL is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: false,
+          error: 'URL is required'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
+ 
     // Validate BNP domain
     const urlObj = new URL(url);
     const validDomains = ['bnpparibas.com', 'group.bnpparibas'];
     const isValidDomain = validDomains.some(domain => 
       urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
     );
-
+ 
     if (!isValidDomain) {
       return new Response(
-        JSON.stringify({ error: 'URL must be from a BNP Paribas domain' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: false,
+          error: 'URL must be from a BNP Paribas domain'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -58,10 +64,11 @@ serve(async (req) => {
       console.error('Failed to fetch:', url, pageResponse.status, pageResponse.statusText);
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: `Failed to fetch page: ${pageResponse.status} ${pageResponse.statusText}`,
           details: 'The page may be inaccessible or blocking automated requests'
         }),
-        { status: pageResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -126,6 +133,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
+        success: true,
         pageId: pageData.id,
         url: pageData.url,
         title: pageData.title,
@@ -157,10 +165,11 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
+        success: false,
         error: errorMessage,
         details: errorDetails || 'Failed to fetch the page. The server may be temporarily unavailable or blocking requests.'
       }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
