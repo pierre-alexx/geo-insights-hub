@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchPageStats, fetchPages, fetchRewriteStats } from "@/services/geoService";
+import { fetchPageStats, fetchPages, fetchRewriteStats, fetchIndexabilityStats } from "@/services/geoService";
 import { ScoreCard } from "@/components/ScoreCard";
 import { Loader } from "@/components/Loader";
-import { Activity, TrendingUp, Eye, ThumbsUp, Award, Globe, Wand2 } from "lucide-react";
+import { Activity, TrendingUp, Eye, ThumbsUp, Award, Globe, Wand2, FileSearch } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,18 +15,21 @@ export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
   const [pages, setPages] = useState<any[]>([]);
   const [rewriteStats, setRewriteStats] = useState<any>(null);
+  const [indexabilityStats, setIndexabilityStats] = useState<any>(null);
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [statsData, pagesData, rewriteData] = await Promise.all([
+      const [statsData, pagesData, rewriteData, indexabilityData] = await Promise.all([
         fetchPageStats(),
         fetchPages(),
-        fetchRewriteStats()
+        fetchRewriteStats(),
+        fetchIndexabilityStats()
       ]);
       setStats(statsData);
       setPages(pagesData);
       setRewriteStats(rewriteData);
+      setIndexabilityStats(indexabilityData);
       setLoading(false);
     }
     loadData();
@@ -67,7 +70,7 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <ScoreCard
           title="Average Relevance"
           value={formatScore(stats.avgRelevance)}
@@ -91,6 +94,12 @@ export default function Dashboard() {
           value={formatScore(stats.avgRecommendation)}
           icon={ThumbsUp}
           description="Would the LLM recommend it?"
+        />
+        <ScoreCard
+          title="HTML Indexability"
+          value={indexabilityStats ? formatScore(indexabilityStats.avgIndexability) : 'N/A'}
+          icon={FileSearch}
+          description="How LLM-friendly is the HTML?"
         />
       </div>
 

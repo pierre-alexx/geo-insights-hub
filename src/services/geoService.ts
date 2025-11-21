@@ -45,8 +45,20 @@ export interface RewriteResult {
   page_title: string;
 }
 
+export interface IndexabilityResult {
+  id: string;
+  page_id: string;
+  html_indexability_score: number;
+  structure_clarity_score: number;
+  entity_clarity_score: number;
+  content_scannability_score: number;
+  issues: string[];
+  suggestions: string[];
+  created_at: string;
+}
+
 export async function geoEngine(payload: {
-  task: 'score' | 'rewrite' | 'gap-analysis' | 'answer';
+  task: 'score' | 'rewrite' | 'gap-analysis' | 'answer' | 'indexability';
   pageHtml?: string;
   pageUrl?: string;
   promptText?: string;
@@ -717,5 +729,95 @@ export async function fetchPersonaAggregatedResults(personaId: string, pageId: s
     totalTests: data.length,
     results: data,
   };
+}
+
+export async function scoreIndexability(pageId: string): Promise<IndexabilityResult> {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/indexability-score`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ pageId })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to score indexability');
+  }
+
+  return await response.json();
+}
+
+export async function fetchIndexabilityResults(pageId: string): Promise<IndexabilityResult[]> {
+  const { data, error } = await supabase
+    .from('indexability_results')
+    .select('*')
+    .eq('page_id', pageId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  
+  return (data || []).map(result => ({
+    id: result.id,
+    page_id: result.page_id,
+    html_indexability_score: result.html_indexability_score,
+    structure_clarity_score: result.structure_clarity_score,
+    entity_clarity_score: result.entity_clarity_score,
+    content_scannability_score: result.content_scannability_score,
+    issues: (result.issues as any) || [],
+    suggestions: (result.suggestions as any) || [],
+    created_at: result.created_at
+  }));
+}
+
+export async function fetchIndexabilityStats() {
+  try {
+    const { data, error } = await supabase
+      .from('indexability_results')
+      .select('html_indexability_score, page_id, created_at');
+    
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      return {
+        avgIndexability: 0,
+        pagesWithScores: 0,
+        lowIndexabilityPages: []
+      };
+    }
+
+    const latestScores = new Map<string, { score: number; timestamp: string }>();
+    
+    data.forEach(result => {
+      const existing = latestScores.get(result.page_id);
+      if (!existing || new Date(result.created_at) > new Date(existing.timestamp)) {
+        latestScores.set(result.page_id, {
+          score: result.html_indexability_score,
+          timestamp: result.created_at
+        });
+      }
+    });
+
+    const scores = Array.from(latestScores.values()).map(s => s.score);
+    const avgIndexability = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+    const lowIndexabilityPages = Array.from(latestScores.entries())
+      .filter(([_, data]) => data.score < 0.6)
+      .map(([pageId]) => pageId);
+
+    return {
+      avgIndexability,
+      pagesWithScores: latestScores.size,
+      lowIndexabilityPages
+    };
+  } catch (error) {
+    console.error('Error fetching indexability stats:', error);
+    return {
+      avgIndexability: 0,
+      pagesWithScores: 0,
+      lowIndexabilityPages: []
+    };
+  }
 }
 
