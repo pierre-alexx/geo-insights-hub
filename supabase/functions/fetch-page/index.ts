@@ -160,7 +160,7 @@ serve(async (req) => {
         error: errorMessage,
         details: errorDetails || 'Failed to fetch the page. The server may be temporarily unavailable or blocking requests.'
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
