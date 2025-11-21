@@ -1,23 +1,30 @@
 import { useEffect, useState } from "react";
-import { fetchAllResults, GeoResult, fetchPersonaResults, PersonaResult, fetchPersonas, fetchPages } from "@/services/geoService";
+import { fetchAllResults, GeoResult, fetchPersonaResults, PersonaResult, fetchPersonas, fetchPages, fetchAllRewrites } from "@/services/geoService";
 import { ResultsTable } from "@/components/ResultsTable";
 import { PersonaResultsTable } from "@/components/PersonaResultsTable";
 import { GeoResultModal } from "@/components/GeoResultModal";
+import { DiffViewer } from "@/components/DiffViewer";
 import { Loader } from "@/components/Loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExternalLink } from "lucide-react";
 
 export default function Results() {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<GeoResult[]>([]);
   const [personaResults, setPersonaResults] = useState<PersonaResult[]>([]);
   const [groupedPersonaResults, setGroupedPersonaResults] = useState<any[]>([]);
+  const [rewrites, setRewrites] = useState<any[]>([]);
   const [selectedResult, setSelectedResult] = useState<GeoResult | PersonaResult | null>(null);
   const [selectedPersonaGroup, setSelectedPersonaGroup] = useState<any>(null);
+  const [selectedRewrite, setSelectedRewrite] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [personaGroupModalOpen, setPersonaGroupModalOpen] = useState(false);
+  const [rewriteModalOpen, setRewriteModalOpen] = useState(false);
   const [resultType, setResultType] = useState<"general" | "persona">("general");
 
   useEffect(() => {
@@ -26,14 +33,16 @@ export default function Results() {
 
   const loadResults = async () => {
     setLoading(true);
-    const [generalData, personaData, personas, pages] = await Promise.all([
+    const [generalData, personaData, personas, pages, rewritesData] = await Promise.all([
       fetchAllResults(),
       fetchPersonaResults(""),
       fetchPersonas(),
-      fetchPages()
+      fetchPages(),
+      fetchAllRewrites()
     ]);
     setResults(generalData);
     setPersonaResults(personaData);
+    setRewrites(rewritesData);
     
     // Group persona results by persona_id + page_id
     const grouped = personaData.reduce((acc: any, result: PersonaResult) => {
@@ -110,15 +119,54 @@ export default function Results() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-2xl">
           <TabsTrigger value="general">General Tests</TabsTrigger>
           <TabsTrigger value="persona">Persona Tests</TabsTrigger>
+          <TabsTrigger value="rewrites">Rewrites</TabsTrigger>
         </TabsList>
         <TabsContent value="general" className="mt-6">
           <ResultsTable results={results} onViewDetails={handleViewDetails} type="general" />
         </TabsContent>
         <TabsContent value="persona" className="mt-6">
           <PersonaResultsTable results={groupedPersonaResults} onViewDetails={handleViewPersonaGroup} />
+        </TabsContent>
+        <TabsContent value="rewrites" className="mt-6">
+          <div className="space-y-4">
+            {rewrites.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-center text-muted-foreground">No rewrites yet</p>
+                </CardContent>
+              </Card>
+            ) : (
+              rewrites.map((rewrite) => (
+                <Card key={rewrite.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => {
+                  setSelectedRewrite(rewrite);
+                  setRewriteModalOpen(true);
+                }}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1 flex-1">
+                        <CardTitle className="text-lg">{rewrite.pageTitle}</CardTitle>
+                        <CardDescription className="flex items-center gap-2">
+                          <ExternalLink className="h-3 w-3" />
+                          {rewrite.pageUrl}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="outline">
+                        {new Date(rewrite.timestamp).toLocaleDateString()}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {rewrite.summary}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -217,6 +265,48 @@ export default function Results() {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={rewriteModalOpen} onOpenChange={setRewriteModalOpen}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Rewrite Details</DialogTitle>
+            <DialogDescription>
+              {selectedRewrite && (
+                <>
+                  {selectedRewrite.pageTitle}
+                  <br />
+                  {new Date(selectedRewrite.timestamp).toLocaleString()}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedRewrite && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Summary</h3>
+                <p className="text-sm text-muted-foreground">{selectedRewrite.summary}</p>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-2">GEO Rationale</h3>
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/50 p-4 rounded-lg">
+                  {selectedRewrite.geoRationale}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-4">HTML Comparison</h3>
+                <DiffViewer
+                  originalHtml={selectedRewrite.originalHtml}
+                  rewrittenHtml={selectedRewrite.rewrittenHtml}
+                  pageUrl={selectedRewrite.pageUrl}
+                />
               </div>
             </div>
           )}

@@ -465,6 +465,38 @@ export async function rewritePage(pageId: string): Promise<Rewrite> {
   return await response.json();
 }
 
+export async function fetchAllRewrites(): Promise<(Rewrite & { pageUrl: string; pageTitle: string })[]> {
+  try {
+    const { data, error } = await supabase
+      .from('rewrites')
+      .select(`
+        *,
+        pages (
+          url,
+          title
+        )
+      `)
+      .order('timestamp', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map((r: any) => ({
+      id: r.id,
+      pageId: r.page_id,
+      originalHtml: r.original_html,
+      rewrittenHtml: r.rewritten_html,
+      summary: r.summary,
+      geoRationale: r.geo_rationale,
+      timestamp: r.timestamp,
+      pageUrl: r.pages?.url || '',
+      pageTitle: r.pages?.title || ''
+    }));
+  } catch (error) {
+    console.error('Error fetching all rewrites:', error);
+    return [];
+  }
+}
+
 export async function fetchRewrites(pageId: string): Promise<Rewrite[]> {
   try {
     const { data, error } = await supabase
