@@ -11,6 +11,7 @@ import RunTest from "./pages/RunTest";
 import Results from "./pages/Results";
 import PageDetail from "./pages/PageDetail";
 import PageRewriter from "./pages/PageRewriter";
+import CreateGeoPage from "./pages/CreateGeoPage";
 import PersonaManagement from "./pages/PersonaManagement";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -50,6 +51,7 @@ const App = () => (
                             <Route path="/results" element={<Results />} />
                             <Route path="/page/:pageId" element={<PageDetail />} />
                             <Route path="/rewriter" element={<PageRewriter />} />
+                            <Route path="/create-page" element={<CreateGeoPage />} />
                             <Route path="/personas" element={<PersonaManagement />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>

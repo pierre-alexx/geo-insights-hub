@@ -1,4 +1,4 @@
-import { BarChart3, PlayCircle, FileText, LogOut, Wand2, Users } from "lucide-react";
+import { BarChart3, PlayCircle, FileText, LogOut, Wand2, Users, Sparkles } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,7 @@ const menuItems = [
   { title: "Run GEO Test", url: "/run-test", icon: PlayCircle },
   { title: "Results", url: "/results", icon: FileText },
   { title: "Rewriter", url: "/rewriter", icon: Wand2 },
+  { title: "Create New GEO Page", url: "/create-page", icon: Sparkles },
   { title: "Personas", url: "/personas", icon: Users },
 ];
 

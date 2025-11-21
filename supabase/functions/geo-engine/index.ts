@@ -224,6 +224,59 @@ Return ONLY valid JSON:
 }`;
         break;
 
+      case 'create':
+        const createContext = extraContext ? JSON.parse(extraContext) : {};
+        const inspirationText = createContext.inspiration?.length > 0 
+          ? `\n\nINSPIRATION FROM SIMILAR PAGES:\n${createContext.inspiration.map((i: any) => `URL: ${i.url}\nH1: ${i.h1}\nH2s: ${i.h2s.join(', ')}\nH3s: ${i.h3s.join(', ')}`).join('\n\n')}`
+          : '';
+        
+        userPrompt = `You are creating a brand-new GEO-optimized page from scratch.
+
+PAGE INTENT:
+- Title: ${createContext.pageTitle || 'New Page'}
+- Goal: ${createContext.pageGoal || 'Provide information'}
+- Target Audience: ${createContext.targetAudience || 'General clients'}
+- Tone: ${createContext.tone || 'Professional'}
+
+${createContext.requiredSections ? `REQUIRED SECTIONS:\n${createContext.requiredSections}\n\n` : ''}${createContext.keyMessages ? `KEY MESSAGES TO INCLUDE:\n${createContext.keyMessages}\n\n` : ''}${createContext.faqs ? `FAQs TO ADDRESS:\n${createContext.faqs}\n\n` : ''}${createContext.userContext ? `ADDITIONAL CONTEXT:\n${createContext.userContext}\n\n` : ''}${createContext.persona ? `PERSONA TO OPTIMIZE FOR:
+Name: ${createContext.persona.name}
+Description: ${createContext.persona.description}
+Goal: ${createContext.persona.goal}
+Needs: ${createContext.persona.needs}
+Risk Profile: ${createContext.persona.risk_profile}
+
+` : ''}${inspirationText}
+
+TASK:
+Generate a complete, GEO-optimized HTML page that:
+1. Follows the GEO Style Guide framework
+2. Uses clear heading hierarchy (H1/H2/H3)
+3. Includes structured sections with definitions, comparisons, statistics
+4. Uses bullet points and lists for scannability
+5. Has explicit entities and clear terminology
+6. Includes summary boxes and key insights
+7. Is LLM-friendly and indexable
+${createContext.persona ? `8. Is specifically tailored for the ${createContext.persona.name} persona\n` : ''}
+Return your answer in the following PLAIN TEXT format using the exact section markers below:
+
+===NEW_PAGE_HTML===
+<full HTML here with proper structure>
+===END_NEW_PAGE_HTML===
+
+===NEW_PAGE_OUTLINE===
+<hierarchical outline as plain text showing H1/H2/H3 structure>
+===END_NEW_PAGE_OUTLINE===
+
+===GEO_RATIONALE===
+<explanation of GEO optimization choices, playbook rules applied, structure decisions>
+===END_GEO_RATIONALE===
+
+===PERSONA_RATIONALE===
+<persona-specific tailoring explanation, or leave empty if not applicable>
+===END_PERSONA_RATIONALE===`;
+        responseFormat = undefined;
+        break;
+
       default:
         throw new Error('Invalid task type');
     }
@@ -270,7 +323,7 @@ Return ONLY valid JSON:
     let result;
     if (task === 'answer') {
       result = { answer: content };
-    } else if (task === 'rewrite') {
+    } else if (task === 'rewrite' || task === 'create') {
       // For rewrite, parse the plain-text sections using markers
       const extractSection = (label: string) => {
         const startTag = `===${label}===`;
