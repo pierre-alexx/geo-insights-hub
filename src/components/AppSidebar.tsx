@@ -1,4 +1,4 @@
-import { BarChart3, PlayCircle, FileText, LogOut, Globe, Wand2, Target, Users } from "lucide-react";
+import { BarChart3, PlayCircle, FileText, LogOut, Wand2, Users } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +21,6 @@ const menuItems = [
   { title: "Dashboard", url: "/", icon: BarChart3 },
   { title: "Run GEO Test", url: "/run-test", icon: PlayCircle },
   { title: "Results", url: "/results", icon: FileText },
-  { title: "Crawler", url: "/crawler", icon: Globe },
   { title: "Rewriter", url: "/rewriter", icon: Wand2 },
   { title: "Personas", url: "/personas", icon: Users },
 ];

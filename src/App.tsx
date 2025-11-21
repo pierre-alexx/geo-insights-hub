@@ -10,7 +10,6 @@ import Dashboard from "./pages/Dashboard";
 import RunTest from "./pages/RunTest";
 import Results from "./pages/Results";
 import PageDetail from "./pages/PageDetail";
-import Crawler from "./pages/Crawler";
 import PageRewriter from "./pages/PageRewriter";
 import PersonaManagement from "./pages/PersonaManagement";
 import Auth from "./pages/Auth";
@@ -48,7 +47,6 @@ const App = () => (
                           <Route path="/run-test" element={<RunTest />} />
                           <Route path="/results" element={<Results />} />
                           <Route path="/page/:pageId" element={<PageDetail />} />
-                          <Route path="/crawler" element={<Crawler />} />
                           <Route path="/rewriter" element={<PageRewriter />} />
                           <Route path="/personas" element={<PersonaManagement />} />
                           <Route path="*" element={<NotFound />} />
