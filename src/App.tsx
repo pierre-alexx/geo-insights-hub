@@ -38,7 +38,7 @@ const App = () => (
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                           <div className="h-px w-4 sm:w-6 bg-border shrink-0" />
                           <h2 className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
-                            BNP Paribas GEO Analytics
+                            BNP GEO
                           </h2>
                         </div>
                       </header>

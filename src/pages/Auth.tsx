@@ -123,9 +123,9 @@ export default function Auth() {
               <BarChart3 className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl">GEO Dashboard</CardTitle>
+          <CardTitle className="text-2xl">BNP GEO</CardTitle>
           <CardDescription>
-            BNP Paribas LLM Analytics Platform
+            LLM Analytics Platform
           </CardDescription>
         </CardHeader>
         <CardContent>
