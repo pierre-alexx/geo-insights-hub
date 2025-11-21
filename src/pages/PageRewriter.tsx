@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader } from "@/components/Loader";
 import { toast } from "sonner";
 import { DiffViewer } from "@/components/DiffViewer";
-import { Download, FileText, Copy, Target, User } from "lucide-react";
+import { Download, FileText, Copy, Target, User, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
@@ -118,6 +118,45 @@ export default function PageRewriter() {
     a.click();
     URL.revokeObjectURL(url);
     toast.success("HTML exported");
+  };
+
+  const handleOpenInNewTab = () => {
+    if (!result) return;
+
+    const newWindow = window.open("", "_blank");
+    if (!newWindow) {
+      toast.error("Please allow pop-ups to open the rewritten page.");
+      return;
+    }
+
+    const getBaseHref = () => {
+      try {
+        const url = new URL(result.page_url);
+        return `${url.origin}/`;
+      } catch {
+        return "";
+      }
+    };
+
+    const baseHref = getBaseHref();
+    let html = result.new_page_html || "";
+
+    if (baseHref) {
+      if (/<head[^>]*>/i.test(html)) {
+        html = html.replace(
+          /<head([^>]*)>/i,
+          `<head$1><base href="${baseHref}" />`
+        );
+      } else {
+        html = `<head><base href="${baseHref}" /></head>${html}`;
+      }
+    }
+
+    const docHtml = /^<!doctype html/i.test(html) ? html : `<!DOCTYPE html>${html}`;
+
+    newWindow.document.open();
+    newWindow.document.write(docHtml);
+    newWindow.document.close();
   };
 
   const handleCopyOutline = () => {
@@ -284,6 +323,10 @@ export default function PageRewriter() {
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold">Rewrite Results</h2>
             <div className="flex gap-2">
+              <Button onClick={handleOpenInNewTab} variant="outline">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Open Rewritten Page
+              </Button>
               <Button onClick={handleExportHtml} variant="outline">
                 <Download className="mr-2 h-4 w-4" />
                 Export HTML
