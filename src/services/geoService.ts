@@ -36,12 +36,20 @@ export async function fetchPage(url: string): Promise<Page> {
     body: JSON.stringify({ url })
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to fetch page');
-  }
-
   const data = await response.json();
+
+  if (!response.ok || data?.success === false) {
+    const rawMessage: string | undefined = data?.error;
+    const details: string | undefined = data?.details;
+
+    let message = details || rawMessage || 'Failed to fetch page';
+
+    if (rawMessage && (rawMessage.includes('http2 error') || rawMessage.includes('stream error'))) {
+      message = 'The BNP site refused the connection from this backend (HTTP/2 error). Please try another BNP URL or contact your infra team to allow these requests.';
+    }
+
+    throw new Error(message);
+  }
   
   const { data: page, error } = await supabase
     .from('pages')
